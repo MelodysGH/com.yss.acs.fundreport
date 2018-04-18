@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wc-entries
+   xmlns="svn:">
+<entry
+   repos="http://192.168.100.238/svn/acssvn"
+   name=""
+   revision="313130"
+   last-author="zhangxiaorui"
+   uuid="a366b9f8-ae6c-4d04-a85b-0020d49e262e"
+   url="http://192.168.100.238/svn/acssvn/Trunk/SourceCode/21GZ3.5/report20/com.yss.acs.fundreport"
+   committed-rev="298914"
+   incomplete="true"
+   kind="dir"
+   committed-date="2018-03-12T07:39:11.216098Z"/>
+<entry
+   name=".classpath"
+   revision="310291"
+   checksum="6101317363c01b1eb9b011adee1f8533"
+   last-author="zhangxiaorui"
+   committed-rev="171129"
+   text-time="2016-05-20T02:30:42.470000Z"
+   kind="file"
+   committed-date="2016-05-20T02:30:42.470400Z"/>
+<entry
+   name=".project"
+   revision="310291"
+   checksum="c03348ff1311b7c4264e8f6ee78990c7"
+   last-author="zhangxiaorui"
+   committed-rev="171129"
+   text-time="2016-05-20T02:30:42.470000Z"
+   kind="file"
+   committed-date="2016-05-20T02:30:42.470400Z"/>
+<entry
+   name=".settings"
+   kind="dir"/>
+<entry
+   name="META-INF"
+   kind="dir"/>
+<entry
+   name="WebContent"
+   kind="dir"/>
+<entry
+   name="build.properties"
+   revision="310291"
+   checksum="72f1e780fe4bd58f12d3d4445498055e"
+   last-author="zhangxiaorui"
+   committed-rev="171129"
+   text-time="2016-05-20T02:30:42.470000Z"
+   kind="file"
+   committed-date="2016-05-20T02:30:42.470400Z"/>
+<entry
+   name="pom.xml"
+   revision="310291"
+   checksum="6122a70ca4566751e23df3b1b5f8a3b0"
+   last-author="zhangxiaorui"
+   committed-rev="268250"
+   text-time="2017-11-30T08:00:09.029000Z"
+   kind="file"
+   committed-date="2017-11-30T08:00:09.029086Z"/>
+<entry
+   name="src"
+   kind="dir"/>
+<entry
+   name="target"
+   kind="dir"/>
+</wc-entries>

@@ -1,0 +1,63 @@
+package com.yss.acs.fundreport.service;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
+import com.yss.sofa.framework.log.SOFALogger;
+import com.yss.sofa.framework.log.SOFALoggerFactory;
+import com.yss.sofa.framework.services.ServiceFactory;
+import com.yss.sofa.framework.services.report.ReportService;
+import com.yss.sofa.framework.web.util.JSONUtil;
+
+
+
+
+/** 
+ * 本类的功能简述.本类的功能详细说明。补充修订记录
+ * @author  Kris
+ * @version 1.0.0,2016-10-20
+ * @since   开始提供该类、接口的版本号
+ */
+public class ReportDataForXBRLImpl implements IFundReportService{
+	
+	SOFALogger logger = SOFALoggerFactory.getSOFALogger(ReportDataForXBRLImpl.class);
+
+	public String getReportData(String paramsStr) throws Exception {
+		ReportService reportService = ServiceFactory.getInstance().getService(ReportService.class);
+		ClassLoader currentloader=this.getClass().getClassLoader();
+		ClassLoader reportloader=reportService.getClass().getClassLoader();
+	try {
+		//获取接口参数Map
+		Map<String,String> params = getParamMap(paramsStr);
+		//报表编码
+		String reportcode = params.get("reportcode");
+		//传入报表中心导出时的必要的SYS_*参数,要注意Xbrl传来的报表模板的 reportcode  都是报表编码_XBRL
+		params.put("SYS_REPORT_CODE", reportcode);
+		params.put("SYS_REPORT_NAME", "data4xbrl"+reportcode);
+		params.put("SYS_USER_ID", "xbrl");
+		params.put("SYS_USER_NAME", "xbrl");
+		
+		Thread.currentThread().setContextClassLoader(reportloader);
+		String[][] reportArr = reportService.execute(reportcode, params);
+		String result = JSONUtil.toJson(reportArr);
+		return result;
+	} finally {
+		Thread.currentThread().setContextClassLoader(currentloader);
+	}
+	}
+	public Map<String,String> getParamMap(String paramsStr){
+		Map<String,String> params = new HashMap<String, String>();
+	       // 将json字符串转换成jsonObject  
+		Map map = (Map) JSONUtil.toObject(paramsStr, Map.class); 
+        Set<String> keys = map.keySet(); //得到所有key的集合
+        for(String key:keys){
+        	 if(key.endsWith("date")){
+        		 params.put("__"+key+"__", map.get(key).toString());
+        	 }else{
+        		 params.put(key, map.get(key).toString());
+        	 }
+        }
+	       return params;
+	}
+}

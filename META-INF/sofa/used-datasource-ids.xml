@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<datasource-ids>
+	<datasource-id id="fundReportDataSource" name="核算报表组件" />
+	<datasource-id id="fundDataSource" name="核算35" />
+	<datasource-id id="fundOtherDataSource" name="核算35副应用" />
+</datasource-ids> 

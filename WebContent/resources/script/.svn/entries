@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wc-entries
+   xmlns="svn:">
+<entry
+   repos="http://192.168.100.238/svn/acssvn"
+   name=""
+   revision="310291"
+   last-author="zhangxiaorui"
+   url="http://192.168.100.238/svn/acssvn/Trunk/SourceCode/21GZ3.5/report20/com.yss.acs.fundreport/WebContent/resources/script"
+   uuid="a366b9f8-ae6c-4d04-a85b-0020d49e262e"
+   committed-rev="288064"
+   kind="dir"
+   committed-date="2018-01-31T11:16:27.262347Z"/>
+<entry
+   name="common.js"
+   checksum="755c2f5ee559aa2e3539d9e0b030af19"
+   last-author="zhangxiaorui"
+   committed-rev="171129"
+   text-time="2016-05-20T02:30:42.470000Z"
+   kind="file"
+   committed-date="2016-05-20T02:30:42.470400Z"/>
+<entry
+   name="reportDataMsg.js"
+   checksum="6a49b4716e056a94fd1cb35001cf046c"
+   last-author="zhangxiaorui"
+   committed-rev="288064"
+   text-time="2018-01-31T11:16:27.262000Z"
+   kind="file"
+   committed-date="2018-01-31T11:16:27.262347Z"/>
+</wc-entries>

@@ -1,0 +1,305 @@
+package com.yss.acs.fundreport.controller;
+
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+import com.yss.acs.fundreport.biz.ReportDataBO;
+import com.yss.acs.fundreport.biz.ReportDataMsgBO;
+import com.yss.acs.fundreport.biz.ReportReadThread;
+import com.yss.sofa.framework.services.ServiceFactory;
+import com.yss.sofa.framework.services.report.ReportService;
+import com.yss.sofa.framework.util.SOFAEnvionmentUtil;
+import com.yss.sofa.framework.util.StringUtil;
+import com.yss.sofa.framework.web.controller.SimpleCRUDController;
+import com.yss.sofa.framework.web.util.AJAXUtil;
+import com.yss.sofa.framework.web.util.JSONUtil;
+
+@Controller
+@RequestMapping("/reportDataMsg")
+public class ReportDataMsgController extends SimpleCRUDController  {
+	@Autowired
+	private ReportDataMsgBO reportDataMsgBO;
+	@Autowired
+	private ReportDataBO reportDataBO;
+	@Autowired
+	public ReportDataMsgController(ReportDataMsgBO reportDataMsgBO) {
+		
+		// 设置管理列表页
+		this.setListView("reportDataMsg_list");
+		// 设置功能编码,不设置功能编码时系统根据本组件的web应用上下文和列表页面名（listView变量值）拼接
+		this.setFunctionCode("acs-fundreport@reportDataMsg");
+		this.setReportDataMsgBO(reportDataMsgBO);
+		// 设置父类BO引用
+		this.setGenericCRUDBO(reportDataMsgBO);
+	}
+	/**
+	 * 
+	 * 获取核算套账树
+	 * @param request
+	 * @param response
+	 * @throws Exception
+	 * @author  Kris
+	 * @date    2016-5-12
+	 */
+	@RequestMapping(params = "method=getAssetTree")
+	public void getAssetTree(HttpServletRequest request, HttpServletResponse response) throws Exception{
+		//异步节点
+		String node = request.getParameter("node");
+		//查询关键字
+		String keyword = request.getParameter("keyword");
+		String otherResult = reportDataMsgBO.getAssetTree(node,keyword,null);
+		AJAXUtil.success(response, otherResult);
+	
+	}
+	/**
+	 * 获取报表套账树
+	 * 方法详细说明，包括用途、注意事项、举例说明等。
+	 * @param request
+	 * @param response
+	 * @throws Exception
+	 * @author  Kris
+	 * @date    2016-5-26
+	 */
+	@RequestMapping(params = "method=getAssetForReport")
+	public void getAssetForReport(HttpServletRequest request, HttpServletResponse response) throws Exception{
+		//指定数据源
+		String dataSource = request.getParameter("dataSource");
+		this.reportDataMsgBO.setDataSource(dataSource);
+		List<Object> params = new ArrayList<Object>();
+		String node = request.getParameter("node");
+		String keyword = request.getParameter("_");
+		String userId = request.getParameter("SYS_USER_ID");
+		String roleAndGroup = request.getParameter("SYS_USER_NAME");
+		if(roleAndGroup.indexOf(",")>-1){
+			params.add(userId);//userId
+			params.add(roleAndGroup.split(",")[0]);//roleId
+			params.add(roleAndGroup.split(",")[1]);//groupId
+		}else{
+			params.add(null);
+			params.add(null);
+			params.add(null);
+		}
+		String result = reportDataMsgBO.getAssetTree(node,keyword,params);
+		AJAXUtil.success(response, result);
+	}
+	/**
+	 * 获取报表会计科目
+	 * 方法详细说明，包括用途、注意事项、举例说明等。
+	 * @param request
+	 * @param response
+	 * @throws Exception
+	 * @author  yb
+	 * @date    2017-7-10
+	 */
+	@RequestMapping(params="method=getKjkmForReport")
+	public void getKjkmForReport(HttpServletRequest request,HttpServletResponse response) throws Exception{
+		String keyword = request.getParameter("_");
+		String fsetcode = request.getParameter("product");
+		String fkmlb = request.getParameter("__jbr__");
+		String result = reportDataMsgBO.getKjkm(keyword,fsetcode,fkmlb);
+		AJAXUtil.success(response, result);
+	}
+	
+		
+	/**
+	 * 页面异步套账树多选返回真正的节点
+	 * 方法详细说明，包括用途、注意事项、举例说明等。
+	 * @param request
+	 * @param response
+	 * @throws Exception
+	 * @author  Kris
+	 * @date    2017-1-9
+	 */
+	@RequestMapping(params = "method=getRealCodes")
+	public void getRealCodes(HttpServletRequest request, HttpServletResponse response) throws Exception{
+		List<Object> params = new ArrayList<Object>();
+		Map map = new HashMap();
+		String reportParams = request.getParameter("reportparams");
+		if(StringUtil.isNotEmpty(reportParams)){ 
+			map = (Map) JSONUtil.toObject(reportParams, Map.class);
+			String userId = (String)map.get("SYS_USER_ID");
+			String roleAndGroup = (String)map.get("SYS_USER_NAME");
+			if(roleAndGroup.indexOf(",")>-1){
+				params.add(userId);//userId
+				params.add(roleAndGroup.split(",")[0]);//roleId
+				params.add(roleAndGroup.split(",")[1]);//groupId
+			}
+		}else{
+			params.add(null);
+			params.add(null);
+			params.add(null);
+		}
+		String [] nodes = request.getParameter("str").split(",");	
+		List<String> resultList = new ArrayList<String>();
+		for(String node:nodes){
+			if(node.indexOf("R")>-1){
+				resultList.addAll(reportDataMsgBO.getRealCodes(node,params));
+			}else{
+				resultList.add(node);
+			}
+		}
+		StringBuffer result = new StringBuffer();
+		
+		if(resultList.size()>0){
+			HashSet<String> hs = new HashSet<String>(resultList);
+			Iterator<String> iterator=hs.iterator();
+			while(iterator.hasNext()){
+				result.append(iterator.next()+",");
+			}
+			result.setLength(result.length()-1);
+		}
+		AJAXUtil.success(response, result.toString());
+	}
+	
+	
+	/**
+	 * 
+	 * 获取报表任务调度信息(套账明细)
+	 * @param request
+	 * @param response
+	 * @author  Kris
+	 * @date    2016-5-13
+	 */
+	@RequestMapping(params = "method=getReportDataMsg")
+	public void getReportDataMsg(HttpServletRequest request, HttpServletResponse response)throws Exception{
+		Map<String,String> params = new HashMap<String, String>();
+		//获取页面参数
+		params.put("search", request.getParameter("search"));//查询标志，到search为0时，页面不查询(数据量太大的原因)
+		params.put("fsetcode", request.getParameter("fsetcode"));//套账号
+		params.put("reportcode", request.getParameter("reportcode"));//报表类型
+		params.put("reporttype", request.getParameter("reporttype"));//期间类型
+		params.put("reportstart", request.getParameter("reportstart"));//开始时间
+		params.put("reportend", request.getParameter("reportend"));//结束时间
+		params.put("flag", request.getParameter("flag"));//执行状态
+		String result = reportDataMsgBO.getReportDataMsg(params);
+		AJAXUtil.success(response, result);
+	}
+	@RequestMapping(params = "method=executeDownDataAll")
+	public void executeDownDataAll(HttpServletRequest request, HttpServletResponse response)throws Exception{
+		String [] ids  = request.getParameter("ids").split(",");//
+		String [] reportcodes  = request.getParameter("reportcodes").split(",");//
+		String [] reportnames  = request.getParameter("reportnames").split(",");//
+		String [] user_id = request.getParameter("user_id").split(",");//
+		String [] user_name = request.getParameter("user_name").split(",");//
+		String [] products = request.getParameter("product").split(",");//
+		String [] __products__ = request.getParameter("__products__").split(",");//
+		String [] ftypes = request.getParameter("ftypes").split(",");//
+		String [] __fsdates__ = request.getParameter("__fsdates__").split(",");//
+		String [] __fedates__ = request.getParameter("__fedates__").split(",");//
+		for(int i=0;i<ids.length;i++){
+			Map<String,String> params = new HashMap<String, String>();//
+			Map<String,Object> params_Msg = new HashMap<String, Object>();//
+
+			params.put("SYS_REPORT_CODE", reportcodes[i]);//
+			params.put("SYS_REPORT_NAME", reportnames[i]);//
+			params.put("SYS_USER_ID", user_id[i]);//
+			params.put("SYS_USER_NAME", user_name[i]);//
+			//实际报表参数
+			params.put("product", products[i]);//
+			params.put("__product__", __products__[i]);//
+			params.put("ftype", ftypes[i]);//
+			params.put("__fsdate__", __fsdates__[i]);//
+			params.put("__fedate__", __fedates__[i]);//
+			params.put("fmode","0");//
+			params_Msg.put("reportcode", reportcodes[i]);////报表编号
+		}
+	}
+	/**
+	 * 
+	 * 后台调报表中心服务,重新执行落地操作
+	 * @param request
+	 * @param response
+	 * @author  Kris
+	 * @date    2016-5-13
+	 */
+	@RequestMapping(params = "method=executeDownData")
+	public void executeDownData(HttpServletRequest request, HttpServletResponse response)throws Exception{
+		String reportcode  = request.getParameter("reportcode");
+		String id  = request.getParameter("id");
+
+		Map<String,String> params = new HashMap<String, String>();
+		Map<String,Object> params_Msg = new HashMap<String, Object>();
+		
+		params.put("SYS_REPORT_CODE",request.getParameter("reportcode"));
+		params.put("SYS_REPORT_NAME",request.getParameter("reportname"));
+		params.put("SYS_USER_ID",request.getParameter("user_id"));
+		params.put("SYS_USER_NAME",request.getParameter("user_name"));
+		//实际报表参数
+		params.put("product",request.getParameter("fsetcode"));
+		params.put("__product__",request.getParameter("fsetname_"));
+		params.put("ftype",request.getParameter("reporttype_"));
+		params.put("__fsdate__",request.getParameter("reportstart"));
+		params.put("__fdate__",request.getParameter("reportstart"));
+		params.put("__fedate__",request.getParameter("reportend"));
+		params.put("fmode","0");
+		params_Msg.put("fsetname",request.getParameter("fsetname_"));
+		params_Msg.put("reportstart",request.getParameter("reportstart"));
+		params_Msg.put("reportend",request.getParameter("reportstart"));
+		params_Msg.put("fsetcode",request.getParameter("fsetcode"));
+		params_Msg.put("ftype",request.getParameter("reporttype_"));
+		params_Msg.put("reportcode",request.getParameter("reportcode"));//报表编号
+		try {
+			
+			ReportService reportService = ServiceFactory.getInstance().getService(ReportService.class);
+			String[][] raw = reportService.execute(reportcode, params);
+			List<Map<String,Object>> dataList = reportDataBO.arrToDataList(raw,params_Msg);
+			reportDataBO.saveReportData(dataList, params_Msg,id);
+			
+		} catch (Exception e) {
+			reportDataBO.updateDownMsg(params_Msg,"0",id,null);
+			e.printStackTrace();
+		    throw new Exception(e);
+		}
+	}
+	@RequestMapping(params = "method=readFile")
+	public void readFile(HttpServletRequest request, HttpServletResponse response)throws Exception{
+		try{
+
+			  String path=SOFAEnvionmentUtil.getSOFAHomePath()+"/report/.export";
+			  File file=new File(path);
+			  File[] tempList = file.listFiles();
+			  for (int i = 0; i < tempList.length; i++) {
+			   if (tempList[i].isDirectory()&&!tempList[i].getName().endsWith("_temp")) {
+			    ReportReadThread thread = new ReportReadThread(tempList[i].getName());
+			    thread.run();
+			   }
+			  }	
+		} catch (Exception e) {
+			
+			e.printStackTrace();
+			throw new Exception(e);
+		}
+	}
+	public ReportDataMsgBO getReportDataMsgBO() {
+		return reportDataMsgBO;
+	}
+	public void setReportDataMsgBO(ReportDataMsgBO reportDataMsgBO) {
+		this.reportDataMsgBO = reportDataMsgBO;
+	}
+	/**
+	 * @return the reportDataBO
+	 */
+	public ReportDataBO getReportDataBO() {
+		return reportDataBO;
+	}
+	/**
+	 * @param reportDataBO the reportDataBO to set
+	 */
+	public void setReportDataBO(ReportDataBO reportDataBO) {
+		this.reportDataBO = reportDataBO;
+	}
+
+}

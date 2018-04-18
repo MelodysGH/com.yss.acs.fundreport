@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping package="com.yss.acs.fundreport.vo">
+	<class name="TaskNodesManage" table="T_TEST" dynamic-update="false"
+		dynamic-insert="true">
+		<!-- BasalVO -->
+		<id name="id" type="string">
+			<column name="FID" precision="20" scale="0" />
+			<generator class="com.yss.sofa.framework.id.hibernate.HibNUIDGenerator" />
+		</id>
+
+		<property name="Fcode" type="string">
+			<column name="FCODE" />
+		</property>
+
+		<property name="Fname" type="string">
+			<column name="FNAME" />
+		</property>
+
+		<property name="Ftype" type="string">
+			<column name="FTYPE" />
+		</property>
+
+		<property name="FNodes" type="string">
+			<column name="FNODES" />
+		</property>
+	</class>
+</hibernate-mapping>

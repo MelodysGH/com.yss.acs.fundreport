@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>com.yss.sofa</groupId>
+		<artifactId>com.yss.sofa.bundle.parent</artifactId>
+		<version>2.5.0-SNAPSHOT</version>
+	</parent>
+	<groupId>com.yss.acs</groupId>
+	<artifactId>com.yss.acs.fundreport</artifactId>
+	<packaging>bundle</packaging>
+	<name>Spring OSGi Bundle</name>
+	<version>1.0.0-SNAPSHOT</version>
+	<url>http://www.springframework.org/osgi</url>
+	<dependencies>
+		<dependency>
+			<groupId>com.yss.sofa</groupId>
+			<artifactId>com.yss.sofa.framework</artifactId>
+			<scope>provided</scope>
+		</dependency>
+	</dependencies>
+</project>

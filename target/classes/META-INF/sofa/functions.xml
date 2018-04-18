@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<functions>
+	<!-- 功能编码应该全局唯一 ,命名规则为本组件的web应用上下文.页面的名字，如:demo-crud.role_list 采用小写字母 -->
+
+	<function code="acs-fundreport@reportDataMsg"
+		home-uri="/acs-fundreport/reportDataMsg.ctrl?method=toListView"
+		base-uri="/acs-fundreport/reportDataMsg.ctrl?">
+		<operation code="query" name="查询" action-str="method=query" />
+		<operation code="execute" name="执行" />
+		<operation code="viewReport" name="浏览报表" />
+	</function>
+	<function code="acs-fundreport@productModeManage"
+		home-uri="/acs-fundreport/productModeManage.ctrl?method=toListView"
+		base-uri="/acs-fundreport/productModeManage.ctrl?">
+		<operation code="query" name="查询" action-str="method=query" />
+		<operation code="execute" name="执行" />
+		<operation code="viewReport" name="浏览报表" />
+	</function>
+	<function code="acs-fundreport@taskNodesManage"
+		home-uri="/acs-fundreport/taskNodesManage.ctrl?method=toListView"
+		base-uri="/acs-fundreport/taskNodesManage.ctrl?">
+		<operation code="query" name="查询" action-str="method=query" />
+		<operation code="execute" name="执行" />
+		<operation code="viewReport" name="浏览报表" />
+	</function>
+</functions>

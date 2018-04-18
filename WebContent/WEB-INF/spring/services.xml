@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:osgi="http://www.springframework.org/schema/osgi"
+	xmlns:beans="http://www.springframework.org/schema/beans"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+	http://www.springframework.org/schema/beans/spring-beans-3.0.xsd 
+    http://www.springframework.org/schema/osgi 
+    http://www.springframework.org/schema/osgi/spring-osgi.xsd 
+    http://www.springframework.org/schema/beans 
+    http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+	<!-- 引用OSGi服务com.yss.sofa.framework.datasource.DataSourceFactory -->
+	<osgi:reference id="dataSourceFactoryBean" bean-name="dataSourceFactoryBean"
+		interface="com.yss.sofa.framework.datasource.DataSourceFactory" />
+
+
+	<bean id="ReportDataDownBatchImpl" class="com.yss.acs.fundreport.service.ReportDataDownBatchImpl" />
+	<osgi:service ref="ReportDataDownBatchImpl"
+		interface="com.yss.sofa.framework.services.report.ReportCustomFile">
+		<osgi:service-properties>
+			<entry key="class"
+				value="com.yss.acs.fundreport.service.ReportDataDownBatchImpl" />
+			<entry key="type" value="-9" />
+		</osgi:service-properties>
+	</osgi:service>
+
+
+	<bean id="ReportDataDownByOneImpl" class="com.yss.acs.fundreport.service.ReportDataDownByOneImpl" />
+	<osgi:service ref="ReportDataDownByOneImpl"
+		interface="com.yss.sofa.framework.services.report.ReportCustomProcessor">
+		<osgi:service-properties>
+			<entry key="class"
+				value="com.yss.acs.fundreport.service.ReportDataDownByOneImpl" />
+			<entry key="type" value="-1" />
+		</osgi:service-properties>
+	</osgi:service>
+	<!-- 东方证券：导出并入库 -->
+	<bean id="ReportExcelDataDownByOneImpl"
+		class="com.yss.acs.fundreport.service.ReportExcelDataDownByOneImpl" />
+	<osgi:service ref="ReportExcelDataDownByOneImpl"
+		interface="com.yss.sofa.framework.services.report.ReportCustomFile">
+		<osgi:service-properties>
+			<entry key="class"
+				value="com.yss.acs.fundreport.service.ReportExcelDataDownByOneImpl" />
+			<entry key="type" value="-19880708" />
+		</osgi:service-properties>
+	</osgi:service>
+
+	<bean id="ReportFileRead" class="com.yss.acs.fundreport.service.ReportFileReadImpl" />
+	<osgi:service ref="ReportFileRead"
+		interface="com.yss.sofa.framework.services.task.TaskService">
+		<!-- 配置OSGi属性值 -->
+		<osgi:service-properties>
+			<!-- code属性为操作实现类名，必填项 -->
+			<entry key="code" value="com.yss.acs.fundreport.service.ReportFileReadImpl" />
+			<!-- 是否可通过元信息配置获取服务，必填项 -->
+			<entry key="configurable" value="true" />
+		</osgi:service-properties>
+	</osgi:service>
+
+
+	<!-- 外部服务接口 Xbrl -->
+	<osgi:service interface="com.yss.acs.fundreport.service.IFundReportService">
+		<osgi:service-properties>
+			<entry key="service.exported.interfaces" value="*"></entry>
+		</osgi:service-properties>
+		<bean class="com.yss.acs.fundreport.service.ReportDataForXBRLImpl" />
+	</osgi:service>
+
+</beans>

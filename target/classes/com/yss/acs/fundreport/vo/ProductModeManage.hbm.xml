@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping package="com.yss.acs.fundreport.vo">
+	<class name="TaskNodesManage" table="T_TEST" dynamic-update="false"
+		dynamic-insert="true">
+		<!-- BasalVO -->
+		<id name="fid" type="string">
+			<column name="FID" precision="20" scale="0" />
+			<generator class="com.yss.sofa.framework.id.hibernate.HibNUIDGenerator" />
+		</id>
+
+		<property name="fcode" type="string">
+			<column name="FCODE" />
+		</property>
+
+		<property name="fname" type="string">
+			<column name="FNAME" />
+		</property>
+
+		<property name="finitflag" type="integer">
+			<column name="FINTFLAG" />
+		</property>
+
+		<property name="fjstype" type="string">
+			<column name="FJSTYPE" />
+		</property>
+
+		<property name="fpydays" type="integer">
+			<column name="FPYDAYS" />
+		</property>
+
+		<property name="ftwiceval" type="integer">
+			<column name="FTWICEVAL" />
+		</property>
+
+		<property name="fsetcode" type="integer">
+			<column name="FETCODE" />
+		</property>
+	</class>
+</hibernate-mapping>

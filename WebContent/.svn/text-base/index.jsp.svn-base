@@ -1,0 +1,46 @@
+<%@ page language="java" pageEncoding="utf-8"%>
+<%@ taglib uri="http://sofa.ysstech.com/tag/html" prefix="html"%>
+<%@ taglib uri="http://sofa.ysstech.com/tag/widget" prefix="c"%>
+ 
+<html:jsp>
+ 
+    <head>
+ 
+    <title>good!</title>
+     
+    <html:resource/>
+ 
+    </head>
+ 
+    <body>
+ 
+        <table width="100%" border="0" cellspacing="0" cellpadding="0"
+            height="100%">
+            <tr>
+            	<td width="25%"></td>
+                <td>
+                	
+                	<pre>
+                	环境已经准备好，可以开发啦
+                	
+                	请先修改/META-INF/MANIFEST.MF的相关元数据，
+                	关键信息如下（具体命名规则请参考《SOFA平台规范.doc》）：
+                		
+                		Bundle-Category: SOFA,?
+						Web-ContextPath: 
+						Module-Type: Web
+						Bundle-Version: 1.0.0
+						Bundle-SymbolicName: com.yss.?
+						
+					组件名称的修改请到：/META-INF/i18n_metainf.properties文件c
+					</pre>
+                </td>
+            </tr>
+            <tr>
+                <td><center></center></td>
+            </tr>
+        </table>
+ 
+    </body>
+ 
+</html:jsp>

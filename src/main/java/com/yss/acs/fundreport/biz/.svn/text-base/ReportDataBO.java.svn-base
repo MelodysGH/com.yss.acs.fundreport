@@ -1,0 +1,578 @@
+package com.yss.acs.fundreport.biz;
+
+
+
+import java.io.Serializable;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.hibernate.Session;
+
+import com.yss.acs.fundreport.common.biz.Constants;
+import com.yss.acs.fundreport.util.DBUtil;
+
+import com.yss.sofa.framework.biz.GenericCRUDBO;
+import com.yss.sofa.framework.dao.Dao;
+import com.yss.sofa.framework.dao.hibernate.HibernateUtil;
+import com.yss.sofa.framework.id.IDGenerator;
+import com.yss.sofa.framework.id.NUIDGenerator;
+import com.yss.sofa.framework.util.DateUtil;
+import com.yss.sofa.framework.util.StringUtil;
+
+/** 
+ * 核算报表数据落地处理类
+ * @author  Kris
+ * @version 1.0.0,2016-5-9
+ * @since   1.0
+ */
+public class ReportDataBO extends GenericCRUDBO{
+    /**
+     * 类映射标识
+     */
+	 public static final String BEAN_ID = "reportDataBO";
+	 
+	
+
+	public String getDataSourceMapping() {
+		  return Constants.FUNDREPORT_DATASOURCE_MAPPING;
+	}
+
+	/**
+	 * 
+	 * 核算报表数据落地☞保存
+	 * @param dataList
+	 * @param params
+	 * @author  Kris
+	 * @date    2016-5-9
+	 */
+	@SuppressWarnings("deprecation")
+	public void saveReportData(List<Map<String,Object>> dataList,Map<String,Object> params,String id)throws Exception {
+		StringBuffer addSql = new StringBuffer();
+		StringBuffer delSql = new StringBuffer();
+		Dao dao = this.getDao(this.getDataSourceMapping());
+		
+		//保存数据SQL
+		addSql.append("insert into td_bbzx ");
+		addSql.append("(fsetcode,reportcode,reporttype,reportstart,reportend,rowsnum,");
+		addSql.append("a,b,c,d,e,f,f2,f3,i,j,k,m,downtime) values");
+		addSql.append("(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+		//删除数据SQL
+		if(!(StringUtil.toString(params.get("reportcode")).toLowerCase().startsWith(Constants.NSBB_CODE))){
+		delSql.append("delete from td_bbzx where "+DBUtil.getInSql(StringUtil.toString(params.get("fsetcode")), "fsetcode")+" and reportcode=? and reporttype=? and reportstart=? and reportend=? ");
+		}else{
+			if(StringUtil.toString(params.get("reportcode")).toLowerCase().indexOf("mx")>-1){
+				if(!StringUtil.isEmpty(StringUtil.toString(params.get("fmanager")))&&!"'--'".equals(StringUtil.toString(params.get("fmanager")))){
+					delSql.append("delete from td_bbzx where  fsetcode = 0 and ("+DBUtil.getInSql(StringUtil.toString(params.get("fmanager")), "m")+") and reportcode=? and reporttype=? and reportstart=? and reportend=? ");
+
+				}else{
+					delSql.append("delete from td_bbzx where ("+DBUtil.getInSql(StringUtil.toString(params.get("fsetcode")), "fsetcode") +") and reportcode=? and reporttype=? and reportstart=? and reportend=? ");
+
+				}
+			}else{
+				delSql.append("delete from td_bbzx where ("+DBUtil.getInSql(StringUtil.toString(params.get("fsetcode")), "fsetcode")+"or ("+DBUtil.getInSql(StringUtil.toString(params.get("fmanager")), "m")+")) and reportcode=? and reporttype=? and reportstart=? and reportend=? ");
+			}
+		}
+		Connection conn = null;
+		PreparedStatement pstm_add = null;
+		PreparedStatement pstm_del = null;
+		System.out.println("删除语句:"+delSql.toString());
+		System.out.println("插入语句:"+addSql.toString());
+		try {
+			System.out.println("开始入库处理...."+dataList.size()+"条数据");
+    			Session session = HibernateUtil.getSession(dao);
+    			conn = session.connection();
+    			session.beginTransaction();
+    			pstm_add = conn.prepareStatement(addSql.toString());
+    			pstm_del = conn.prepareStatement(delSql.toString());
+    			//删除操作参数赋值
+    			pstm_del.setString(1, StringUtil.toString(params.get("reportcode")));//报表编号
+    			pstm_del.setString(2, StringUtil.toString(params.get("reporttype")));//报表期间类型
+    			pstm_del.setString(3, StringUtil.toString(params.get("reportstart")));//开始时间
+    			pstm_del.setString(4, StringUtil.toString(params.get("reportend")));//结束时间
+
+    			//删除数据
+    			pstm_del.execute();
+    			System.out.println("删除原有数据完成，避免重复...");
+
+    			//保存操作参数赋值_批量
+				if(!(StringUtil.toString(params.get("reportcode")).toLowerCase().startsWith(Constants.NSBB_CODE))){
+					dealSDBData(pstm_add, dataList, params, "add");
+				}else{
+					if(StringUtil.toString(params.get("reportcode")).toLowerCase().indexOf("mx")>-1){
+    					dealNSMXData(pstm_add, dataList, params, "add");
+					}else{
+    					dealNSSBData(pstm_add, dataList, params, "add");
+					}
+				}
+			
+    			//批量保存数据
+    			pstm_add.executeBatch();
+    			System.out.println("保存数据完成...");
+
+    			//最后执行落地信息数据保存	
+    			updateDownMsg(params,"1",id,conn);
+    			conn.commit();
+    			System.out.println("提交...");
+    			
+		} catch (Exception e) {
+			try {
+				e.printStackTrace();
+				//数据回滚 连接关闭
+				conn.rollback();
+				//记录明细套账落地信息:默认为0,当落地成功完成后置为1
+	        	updateDownMsg(params,"0",id,conn);
+	        	conn.commit();
+				pstm_del.close();
+				pstm_add.close();
+				conn.close();
+			} catch (SQLException e1) {
+				//logger.error("数据回滚失败!");
+				throw e1;
+			}
+			throw e;
+		} finally {
+			//连接关闭
+			pstm_del.close();
+			pstm_add.close();
+			conn.close();
+		}
+		}	
+	
+	/**
+	 * 
+	 * 核算报表数据落地☞保存
+	 * @param dataList
+	 * @param params
+	 * @author  Kris
+	 * @date    2016-5-9
+	 */
+
+	public String getFileContent(List<Map<String,Object>> dataList,Map<String,Object> params,String id)throws Exception {
+		StringBuffer fileContent = new StringBuffer();
+		if(!String.valueOf(params.get("reportcode")).toLowerCase().startsWith(Constants.NSBB_CODE)){
+			fileContent.append(builderSDBContent(dataList,params,id));
+		}else{
+			if(String.valueOf(params.get("reportcode")).toLowerCase().indexOf("mx")>-1){
+				fileContent.append(builderNSMXContent(dataList,params,id));
+
+			}else{
+				fileContent.append(builderNSSBContent(dataList,params,id));
+			}
+		}
+		
+		
+		
+		return fileContent.toString();
+		}
+	/**
+	 * 
+	 * 更新落地状态信息,当地失败时执行,置落地信息中flag字段为"0":失败,"1":成功
+	 * @param params
+	 * @author  Kris
+	 * @date    2016-5-10
+	 */
+	public void updateDownMsg(Map<String, Object> params,String flag,String id,Connection conn) throws Exception{
+		Dao dao = this.getDao(this.getDataSourceMapping());
+		List<Object> data = new ArrayList<Object>();
+		StringBuffer msgSql = new StringBuffer();
+		String deleteSql = "delete from td_bbzxmsg  where  (("+DBUtil.getInSql(StringUtil.toString(params.get("fsetcode")), "fsetcode")+") and reportcode=? and reporttype=? and reportstart=? and reportend=?) or id=?";
+		//保存入库信息数据SQL
+		msgSql.append("insert into td_bbzxmsg ");
+		msgSql.append(" (fsetcode,reportcode,reporttype,reportstart,reportend,id,flag,downtime) values ");
+		msgSql.append(" (?,?,?,?,?,?,?,?) ");
+		PreparedStatement pstm_add = conn.prepareStatement(msgSql.toString());
+
+		data.add(StringUtil.toString(params.get("reportcode")));//报表编号
+		data.add(StringUtil.toString(params.get("reporttype")));//报表期间类型
+		data.add(StringUtil.toString(params.get("reportstart")));//开始时间
+		data.add(StringUtil.toString(params.get("reportend")));//结束时间
+		data.add(id);
+		dao.executeBySql(deleteSql.toString(),data.toArray());
+	
+	
+		for(String fsetcode:StringUtil.toString(params.get("fsetcode")).split(",")){
+			pstm_add.setString(1, fsetcode);//套账
+			pstm_add.setString(2,StringUtil.toString(params.get("reportcode")));//报表编号
+			pstm_add.setString(3,StringUtil.toString(params.get("reporttype")));//报表期间类型
+			pstm_add.setString(4,StringUtil.toString(params.get("reportstart")));//开始时间
+			pstm_add.setString(5,StringUtil.toString(params.get("reportend")));//结束时间
+			pstm_add.setString(6,id);
+			pstm_add.setString(7,flag);//落地标志 1:成功,0:失败
+			pstm_add.setString(8,"手工:"+DateUtil.formatDate(new Date(), DateUtil.FORMAT_ONE));//落地时间
+			pstm_add.addBatch();
+			}
+	
+		//批量保存数据
+		pstm_add.executeBatch();
+			
+	}	/**
+	 * 
+	 * 实际落地实现
+	 * @param report 报表中心返回的map,包含报表数据
+	 * @return
+	 * @author  Kris
+	 * @date    2016-5-16
+	 */
+	public byte[] export(Map<String,Serializable> report,Boolean isBatch){
+		IDGenerator gen = new NUIDGenerator(20);    
+		Map<String,String> tempMap = new HashMap<String, String>();
+		byte [] filecontent = null;
+		tempMap.put("day", "1");//日报
+		tempMap.put("month", "2");//月报
+		tempMap.put("quarter", "3");//季报
+		tempMap.put("half", "4");//半年报
+		tempMap.put("year", "5");//年报
+		tempMap.put("other", "-1");//年报
+		Map paramsMap = (Map)report.get("params");
+	 	String reportcode = (String)paramsMap.get("SYS_REPORT_CODE"); 	
+        //数据内容
+        String[][] raw=(String[][]) report.get("raw");
+        //报表参数:套账号,期间类型,开始时间,结束时间,报表编号
+        Map<String,Object> params = new HashMap<String, Object>();
+        //供落地操作的Map集合
+        List<Map<String,Object>> dataList = new ArrayList<Map<String,Object>>();
+        params.put("reportcode", reportcode);
+        params.put("reporttype", NVL(tempMap.get(paramsMap.get("ftype")),"-1"));
+        params.put("reportstart", NVL(paramsMap.get("fsdate"),paramsMap.get("fdate")));
+        params.put("reportend", NVL(paramsMap.get("fedate"),paramsMap.get("fdate")));
+  	    params.put("fsetcode", (paramsMap.get("product")+"").toString());
+
+        if(!reportcode.toLowerCase().startsWith(Constants.NSBB_CODE)){
+              params.put("fsetname", paramsMap.get("__product__").toString().split("_")[1]);
+        }else{
+        	StringBuffer fmanagers = new StringBuffer();
+        	
+        	if(paramsMap.get("__fmanager__")!=null&&paramsMap.get("__fmanager__").toString().length()>0){
+        		for(String str: paramsMap.get("__fmanager__").toString().split(",")){
+            		fmanagers.append("'"+str.split("_")[0]+"',");
+            	}
+        	}
+        	if(fmanagers.length()>0){
+        		fmanagers.setLength(fmanagers.length()-1);
+          	    params.put("fsetcode", "0");
+                params.put("fmanager", fmanagers.toString());
+        	}else{
+        		params.put("fmanager", "'--'");
+        	}
+
+        }
+        dataList = arrToDataList(raw,params);
+        String id = gen.nextId();
+        try {
+        	//批量落地 只生成文件,实质的落地需要任务调度(读取文件)
+        	filecontent = getFileContent(dataList, params,id).getBytes("UTF-8");
+        	//进行数据的落地操作 数据表TD_BBZX
+        	if(!isBatch){
+        		saveReportData(dataList, params,id);
+        	}
+		} catch (Exception e) {
+			return new byte[]{};
+		}
+        return filecontent;
+    }
+	/**
+	 * 
+	 * 报表数组数据转为待插入数据List
+	 * @param dataArr
+	 * @param params
+	 * @return
+	 * @author  Kris
+	 * @date    2016-5-14
+	 */
+	public List<Map<String,Object>>  arrToDataList(String[][] dataArr,Map<String,Object> params){
+		//套账号,套账名称,期间类型,开始时间,结束时间,报表编号  
+		String reporttype = NVL(params.get("reporttype"),"-1").toString();
+        String reportstart = "";
+        String reportend = "";
+		List<Map<String,Object>> dataList = new ArrayList<Map<String,Object>>();   
+        Map<String,Object> data = null;
+        int begin_index=0;
+        if(Integer.parseInt(reporttype)<0){
+        	begin_index=2;
+        }
+        for(int r=begin_index;r<dataArr.length;r++){
+            data = new HashMap<String, Object>();
+            data.put("rowsnum",r+1);//行数
+            for(int c=0;c<dataArr[0].length;c++){
+        		String key = "f"+(c+1);//f1,f2,f3,f4...f10
+                String value = dataArr[r][c];//具体数据
+                data.put(key,value);//各列数据 
+                if(value.indexOf("报)")>-1){
+                    if(value.indexOf("日报")>-1){
+                    	reporttype = "1";
+                    	reportstart = value.substring(0,10);
+                    	reportend = value.substring(0,10);
+                    }else if(value.indexOf("月报")>-1){
+                    	reporttype = "2";  
+                    	reportstart = value.substring(0,7)+"-"+"01";
+                    	Date fday_month =  DateUtil.stringtoDate(reportstart, "yyyy-MM-dd");//月初第一天
+                    	Date eday_month = DateUtil.nextDay(DateUtil.nextMonth(fday_month, 1), -1);//月末最后一天=下个月的第一天的前一天
+                    	reportend = DateUtil.formatDate(eday_month, "yyyy-MM-dd");
+                    }else if(value.indexOf("季报")>-1){
+                    	reporttype = "3";
+                    	int year = Integer.parseInt(value.substring(0,4));
+                    	int month = Integer.parseInt(value.substring(6,7));
+                    	month = month*3-2;
+                    	reportstart = year+"-"+(month<10?"0"+month:month+"")+"-01";//季初第一天
+                    	Date fday_quarter =  DateUtil.stringtoDate(reportstart, "yyyy-MM-dd");//月初第一天
+                    	Date eday_quarter = DateUtil.nextDay(DateUtil.nextMonth(fday_quarter, 3), -1);//月末最后一天=下个月的第一天的前一天
+                    	reportend = DateUtil.formatDate(eday_quarter, "yyyy-MM-dd");
+                    	
+                    }else if(value.indexOf("半年报")>-1){
+                    	reporttype = "4";
+                    	int year = Integer.parseInt(value.substring(0,4));
+                    	int month = 1;
+                    	String half = value.substring(4,5);
+                    	reportend = year+"-06-30";
+                    	if("下".equals(half)){
+                    		month = 7;
+                    		reportend = year+"-12-31";
+                    	}
+                    	reportstart = year+"-0"+month+"-01";
+                    }else if(value.indexOf("年报")>-1){
+                    	reporttype = "5";
+                    	int year = Integer.parseInt(value.substring(0,4));
+                    	reportstart = year+"-01-01";
+                    	reportend = year+"-12-31";
+                    }else{
+                    	 params.put("reporttype", -1);
+                    	reportstart = String.valueOf(params.get("reportstart"));
+                    	reportend = String.valueOf(params.get("reportend"));
+                    }
+                }   
+            }
+            dataList.add(data);
+        }	   
+        if(reportstart.length()>0){
+        	 params.put("reportstart", reportstart);//开始时间
+        }
+        if(reportend.length()>0){
+        	 params.put("reportend", reportend);//开始时间
+        }
+        return dataList;
+	}
+    public Object NVL(Object arg1,Object arg2){
+    	if(arg1==null||"null".equals(String.valueOf(arg1))||"".equals(String.valueOf(arg1))){
+    		return arg2;
+    	}else{
+    		return arg1;
+    	}
+    }
+    public String builderSDBContent(List<Map<String,Object>> dataList,Map<String,Object> params,String id)throws Exception {
+    	StringBuffer fileContent = new StringBuffer();
+    	try {
+            	fileContent.append(id).append("\r\n");//id;
+            	fileContent.append(StringUtil.toString(params.get("fsetcode"))).append("#");//套账
+            	fileContent.append(StringUtil.toString(params.get("reportcode"))).append("#");//报表编号
+            	fileContent.append(StringUtil.toString(params.get("reporttype"))).append("#");//报表期间类型
+            	fileContent.append(StringUtil.toString(params.get("reportstart"))).append("#");//开始时间
+            	fileContent.append(StringUtil.toString(params.get("reportend"))).append("#");//结束时间
+            	fileContent.append(id).append("#");
+            	fileContent.append(1).append("#");//落地标志 1:成功,0:失败
+            	fileContent.append(DateUtil.formatDate(new Date(), DateUtil.FORMAT_ONE)).append("#");//落地时间
+            	fileContent.append("\r\n");
+            	for(Map<String,Object> data:dataList){
+            		fileContent.append(StringUtil.toString(params.get("fsetcode"))).append("|");//套账
+            		fileContent.append(StringUtil.toString(params.get("reportcode"))).append("|");//报表编号
+            		fileContent.append(StringUtil.toString(params.get("reporttype"))).append("|");//报表期间类型
+            		fileContent.append(StringUtil.toString(params.get("reportstart"))).append("|");//开始时间
+            		fileContent.append(StringUtil.toString(params.get("reportend"))).append("|");//结束时间
+            		
+            		fileContent.append(StringUtil.toString(data.get("rowsnum"))).append("|");//数据所在行数
+            
+            		fileContent.append(data.get("f1")==null?"":StringUtil.toString(data.get("f1"))).append("|");//第1列数值
+            		fileContent.append(data.get("f2")==null?"":StringUtil.toString(data.get("f2"))).append("|");//第2列数值
+            		fileContent.append(data.get("f3")==null?"":StringUtil.toString(data.get("f3"))).append("|");//第3列数值
+            		fileContent.append(data.get("f4")==null?"":StringUtil.toString(data.get("f4"))).append("|");//第4列数值
+            		fileContent.append(data.get("f5")==null?"":StringUtil.toString(data.get("f5"))).append("|");//第5列数值
+            		fileContent.append(data.get("f6")==null?"":StringUtil.toString(data.get("f6"))).append("|");//第6列数值
+            		fileContent.append(data.get("f7")==null?"":StringUtil.toString(data.get("f7"))).append("|");//第7列数值
+            		fileContent.append(data.get("f8")==null?"":StringUtil.toString(data.get("f8"))).append("|");//第8列数值
+            		fileContent.append(data.get("f9")==null?"":StringUtil.toString(data.get("f9"))).append("|");//第9列数值
+            		fileContent.append(data.get("f10")==null?"":StringUtil.toString(data.get("f10"))).append("|");//第10列数值
+            		fileContent.append(DateUtil.formatDate(new Date(), DateUtil.FORMAT_ONE));//落地时间
+            		fileContent.append("\r\n");
+            		}
+        				return fileContent.toString();
+    			}catch (Exception e) {
+    				throw new Exception(e);
+    			}	
+    	}
+    
+    public String builderNSSBContent(List<Map<String,Object>> dataList,Map<String,Object> params,String id)throws Exception {
+    	StringBuffer fileContent = new StringBuffer();
+    	try {
+            	fileContent.append(id).append("\r\n");//id;
+            	fileContent.append("--").append("#");//多套账
+            	fileContent.append(StringUtil.toString(params.get("reportcode"))).append("#");//报表编号
+            	fileContent.append(StringUtil.toString(params.get("reporttype"))).append("#");//报表期间类型
+            	fileContent.append(StringUtil.toString(params.get("reportstart"))).append("#");//开始时间
+            	fileContent.append(StringUtil.toString(params.get("reportend"))).append("#");//结束时间
+            	fileContent.append(id).append("#");
+            	fileContent.append(1).append("#");//落地标志 1:成功,0:失败
+            	fileContent.append(DateUtil.formatDate(new Date(), DateUtil.FORMAT_ONE)).append("#");//落地时间
+            	fileContent.append("\r\n");
+            	for(Map<String,Object> data:dataList){
+            		if(Integer.parseInt(StringUtil.toString(data.get("rowsnum")))<4){
+            			continue;
+            		}
+            		fileContent.append(StringUtil.toString(params.get("fsetcode"))).append("|");//套账
+            		fileContent.append(StringUtil.toString(params.get("reportcode"))).append("|");//报表编号
+            		fileContent.append(StringUtil.toString(params.get("reporttype"))).append("|");//报表期间类型
+            		fileContent.append(StringUtil.toString(params.get("reportstart"))).append("|");//开始时间
+            		fileContent.append(StringUtil.toString(params.get("reportend"))).append("|");//结束时间
+            		
+            		fileContent.append("1").append("|");//数据所在行数
+            
+            		fileContent.append(data.get("f1")==null?"":StringUtil.toString(data.get("f1"))).append("|");//第1列数值
+            		fileContent.append(data.get("f2")==null?"":StringUtil.toString(data.get("f2"))).append("|");//第2列数值
+            		fileContent.append(data.get("f3")==null?"":StringUtil.toString(data.get("f3"))).append("|");//第3列数值
+            		fileContent.append(data.get("f4")==null?"":StringUtil.toString(data.get("f4"))).append("|");//第4列数值
+            		fileContent.append(data.get("f5")==null?"":StringUtil.toString(data.get("f5"))).append("|");//第5列数值
+            		fileContent.append(data.get("f6")==null?"":StringUtil.toString(data.get("f6"))).append("|");//第6列数值
+            		fileContent.append(data.get("f7")==null?"":StringUtil.toString(data.get("f7"))).append("|");//第7列数值
+            		fileContent.append(data.get("f8")==null?"":StringUtil.toString(data.get("f8"))).append("|");//第8列数值
+            		fileContent.append(data.get("f9")==null?"":StringUtil.toString(data.get("f9"))).append("|");//第9列数值
+            		fileContent.append(data.get("f10")==null?"":StringUtil.toString(data.get("f10"))).append("|");//第10列数值
+            		fileContent.append(data.get("f11")==null?"":StringUtil.toString(data.get("f11"))).append("|");//第11列数值
+            		fileContent.append(data.get("f12")==null?"":StringUtil.toString(data.get("f12"))).append("|");//第12列数值
+            		fileContent.append(data.get("f13")==null?"":StringUtil.toString(data.get("f13"))).append("|");//第12列数值
+
+            		fileContent.append(DateUtil.formatDate(new Date(), DateUtil.FORMAT_ONE));//落地时间
+            		fileContent.append("\r\n");
+            		}
+        				return fileContent.toString();
+    			}catch (Exception e) {
+    				throw new Exception(e);
+    			}	
+    	}
+    public String builderNSMXContent(List<Map<String,Object>> dataList,Map<String,Object> params,String id)throws Exception {
+    	StringBuffer fileContent = new StringBuffer();
+    	try {
+            	fileContent.append(id).append("\r\n");//id;
+            	fileContent.append("--").append("#");//多套账
+            	fileContent.append(StringUtil.toString(params.get("reportcode"))).append("#");//报表编号
+            	fileContent.append(StringUtil.toString(params.get("reporttype"))).append("#");//报表期间类型
+            	fileContent.append(StringUtil.toString(params.get("reportstart"))).append("#");//开始时间
+            	fileContent.append(StringUtil.toString(params.get("reportend"))).append("#");//结束时间
+            	fileContent.append(id).append("#");
+            	fileContent.append(1).append("#");//落地标志 1:成功,0:失败
+            	fileContent.append(DateUtil.formatDate(new Date(), DateUtil.FORMAT_ONE)).append("#");//落地时间
+            	fileContent.append("\r\n");
+            	for(Map<String,Object> data:dataList){
+            		if(Integer.parseInt(StringUtil.toString(data.get("rowsnum")))<4){
+            			continue;
+            		}
+            		fileContent.append("0").append("|");//套账
+            		fileContent.append(StringUtil.toString(params.get("reportcode"))).append("|");//报表编号
+            		fileContent.append(StringUtil.toString(params.get("reporttype"))).append("|");//报表期间类型
+            		fileContent.append(StringUtil.toString(params.get("reportstart"))).append("|");//开始时间
+            		fileContent.append(StringUtil.toString(params.get("reportend"))).append("|");//结束时间
+            		
+            		fileContent.append("1").append("|");//数据所在行数
+            
+            		fileContent.append(data.get("f1")==null?"":StringUtil.toString(data.get("f1"))).append("|");//第1列数值
+            		fileContent.append(data.get("f2")==null?"":StringUtil.toString(data.get("f2"))).append("|");//第2列数值
+            		fileContent.append(data.get("f3")==null?"":StringUtil.toString(data.get("f3"))).append("|");//第3列数值
+            		fileContent.append(data.get("f4")==null?"":StringUtil.toString(data.get("f4"))).append("|");//第4列数值
+            		fileContent.append(data.get("f5")==null?"":StringUtil.toString(data.get("f5"))).append("|");//第5列数值
+            		fileContent.append(data.get("f6")==null?"":StringUtil.toString(data.get("f6"))).append("|");//第6列数值
+            		fileContent.append(data.get("f7")==null?"":StringUtil.toString(data.get("f7"))).append("|");//第7列数值
+
+            		fileContent.append(DateUtil.formatDate(new Date(), DateUtil.FORMAT_ONE));//落地时间
+            		fileContent.append("\r\n");
+            		}
+        				return fileContent.toString();
+    			}catch (Exception e) {
+    				throw new Exception(e);
+    			}	
+    	}
+    public void dealSDBData(PreparedStatement pstm,List<Map<String,Object>> dataList,Map<String,Object> params,String ftype) throws Exception{
+    	for(Map<String,Object> data:dataList){
+    		pstm.setString(1, StringUtil.toString(params.get("fsetcode")));//套账
+    		pstm.setString(2, StringUtil.toString(params.get("reportcode")));//报表编号
+    		pstm.setString(3, StringUtil.toString(params.get("reporttype")));//报表期间类型
+    		pstm.setString(4, StringUtil.toString(params.get("reportstart")));//开始时间
+    		pstm.setString(5, StringUtil.toString(params.get("reportend")));//结束时间
+		
+    		pstm.setString(6, StringUtil.toString(data.get("rowsnum")));//数据所在行数
+
+    		pstm.setString(7, data.get("f1")==null?"":StringUtil.toString(data.get("f1")));//第1列数值
+    		pstm.setString(8, data.get("f2")==null?"":StringUtil.toString(data.get("f2")));//第2列数值
+    		pstm.setString(9, data.get("f3")==null?"":StringUtil.toString(data.get("f3")));//第3列数值
+    		pstm.setString(10, data.get("f4")==null?"":StringUtil.toString(data.get("f4")));//第4列数值
+    		pstm.setString(11, data.get("f5")==null?"":StringUtil.toString(data.get("f5")));//第5列数值
+    		pstm.setString(12, data.get("f6")==null?"":StringUtil.toString(data.get("f6")));//第6列数值
+    		pstm.setString(13, data.get("f7")==null?"":StringUtil.toString(data.get("f7")));//第7列数值
+    		pstm.setString(14, data.get("f8")==null?"":StringUtil.toString(data.get("f8")));//第8列数值
+    		pstm.setString(15, data.get("f9")==null?"":StringUtil.toString(data.get("f9")));//第9列数值
+    		pstm.setString(16, data.get("f10")==null?"":StringUtil.toString(data.get("f10")));//第10列数值
+    		pstm.setString(17, data.get("f11")==null?"":StringUtil.toString(data.get("f11")));//第11列数值
+    		pstm.setString(18, "");//第13列数值
+    		pstm.setString(19, "手工:"+DateUtil.formatDate(new Date(), DateUtil.FORMAT_ONE));//落地时间
+    		pstm.addBatch();
+    	}
+    }
+    public void dealNSMXData(PreparedStatement pstm,List<Map<String,Object>> dataList,Map<String,Object> params,String ftype) throws Exception{
+    	for(Map<String,Object> data:dataList){
+
+    		pstm.setString(1, StringUtil.toString(data.get("f2")));//套账
+    		pstm.setString(2, StringUtil.toString(params.get("reportcode")));//报表编号
+    		pstm.setString(3, StringUtil.toString(params.get("reporttype")));//报表期间类型
+    		pstm.setString(4, StringUtil.toString(params.get("reportstart")));//开始时间
+    		pstm.setString(5, StringUtil.toString(params.get("reportend")));//结束时间
+			
+    		pstm.setString(6, StringUtil.toString(data.get("rowsnum")));//数据所在行数
+
+    		pstm.setString(7, data.get("f2")==null?"":StringUtil.toString(data.get("f3")));//统计项
+    		pstm.setString(8, data.get("f3")==null?"":StringUtil.toString(data.get("f4")));//基金名称
+    		pstm.setString(9, data.get("f4")==null?"":StringUtil.toString(data.get("f5")));//第5列数值
+    		pstm.setString(10, data.get("f5")==null?"":StringUtil.toString(data.get("f6")));//第6列数值
+    		pstm.setString(11, data.get("f6")==null?"":StringUtil.toString(data.get("f7")));//第7列数值
+    		pstm.setString(12, data.get("f7")==null?"":StringUtil.toString(data.get("f8")));//第8列数值
+    		pstm.setString(13, data.get("f9")==null?"":StringUtil.toString(0));//默认0
+    		pstm.setString(14, data.get("f10")==null?"":StringUtil.toString(0));//默认0
+    		pstm.setString(15, data.get("f11")==null?"":StringUtil.toString(0));//默认0
+    		pstm.setString(16, data.get("f12")==null?"":StringUtil.toString(0));//默认0
+    		pstm.setString(17, data.get("f13")==null?"":StringUtil.toString(0));//默认0
+    		pstm.setString(18, data.get("f1")==null?"":StringUtil.toString(data.get("f1")));//第1列数值
+    		pstm.setString(19, "手工:"+DateUtil.formatDate(new Date(), DateUtil.FORMAT_ONE));//落地时间
+    		pstm.addBatch();
+
+    	}
+    }
+    public void dealNSSBData(PreparedStatement pstm,List<Map<String,Object>> dataList,Map<String,Object> params,String ftype) throws Exception{
+    	for(Map<String,Object> data:dataList){
+    		
+    		pstm.setString(1, StringUtil.toString(data.get("f2")));//套账
+    		pstm.setString(2, StringUtil.toString(params.get("reportcode")));//报表编号
+    		pstm.setString(3, StringUtil.toString(params.get("reporttype")));//报表期间类型
+    		pstm.setString(4, StringUtil.toString(params.get("reportstart")));//开始时间
+    		pstm.setString(5, StringUtil.toString(params.get("reportend")));//结束时间
+    		
+    		pstm.setString(6, StringUtil.toString("1"));//数据所在行数
+    		
+    		pstm.setString(7, data.get("f3")==null?"":StringUtil.toString(data.get("f3")));//基金代码
+    		pstm.setString(8, data.get("f4")==null?"":StringUtil.toString(data.get("f4")));//基金名称
+    		pstm.setString(9, data.get("f5")==null?"":StringUtil.toString(data.get("f5")));//第5列数值
+    		pstm.setString(10, data.get("f6")==null?"":StringUtil.toString(data.get("f6")));//第6列数值
+    		pstm.setString(11, data.get("f7")==null?"":StringUtil.toString(data.get("f7")));//第7列数值
+    		pstm.setString(12, data.get("f8")==null?"":StringUtil.toString(data.get("f8")));//第8列数值
+    		pstm.setString(13, data.get("f9")==null?"":StringUtil.toString(data.get("f9")));//第9列数值
+    		pstm.setString(14, data.get("f10")==null?"":StringUtil.toString(data.get("f10")));//第10列数值
+    		pstm.setString(15, data.get("f11")==null?"":StringUtil.toString(data.get("f11")));//第11列数值
+    		pstm.setString(16, data.get("f12")==null?"":StringUtil.toString(data.get("f12")));//第12列数值
+    		pstm.setString(17, data.get("f13")==null?"":StringUtil.toString(data.get("f13")));//第13列数值
+    		pstm.setString(18, data.get("f1")==null?"":StringUtil.toString(data.get("f1")));//第1列数值
+    		pstm.setString(19, "手工:"+DateUtil.formatDate(new Date(), DateUtil.FORMAT_ONE));//落地时间
+    		pstm.addBatch();
+
+    	}
+    }
+}

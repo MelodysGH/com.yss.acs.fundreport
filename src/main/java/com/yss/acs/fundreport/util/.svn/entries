@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wc-entries
+   xmlns="svn:">
+<entry
+   repos="http://192.168.100.238/svn/acssvn"
+   name=""
+   revision="310291"
+   last-author="zhangxiaorui"
+   url="http://192.168.100.238/svn/acssvn/Trunk/SourceCode/21GZ3.5/report20/com.yss.acs.fundreport/src/main/java/com/yss/acs/fundreport/util"
+   uuid="a366b9f8-ae6c-4d04-a85b-0020d49e262e"
+   committed-rev="182567"
+   kind="dir"
+   committed-date="2016-08-23T09:09:49.257211Z"/>
+<entry
+   name="DBUtil.java"
+   checksum="e32b02226fb0342e1c37407a058f39a6"
+   last-author="zhangxiaorui"
+   committed-rev="182567"
+   text-time="2016-08-23T09:09:49.257000Z"
+   kind="file"
+   committed-date="2016-08-23T09:09:49.257211Z"/>
+</wc-entries>

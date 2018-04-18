@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wc-entries
+   xmlns="svn:">
+<entry
+   repos="http://192.168.100.238/svn/acssvn"
+   name=""
+   revision="310291"
+   last-author="zhangxiaorui"
+   url="http://192.168.100.238/svn/acssvn/Trunk/SourceCode/21GZ3.5/report20/com.yss.acs.fundreport/WebContent/WEB-INF"
+   uuid="a366b9f8-ae6c-4d04-a85b-0020d49e262e"
+   committed-rev="269488"
+   kind="dir"
+   committed-date="2017-12-05T02:31:20.558834Z"/>
+<entry
+   name="spring"
+   kind="dir"/>
+<entry
+   name="web.xml"
+   checksum="721df2350a6047fe0e56c05992fd65af"
+   last-author="zhangxiaorui"
+   committed-rev="171129"
+   text-time="2016-05-20T02:30:42.470000Z"
+   kind="file"
+   committed-date="2016-05-20T02:30:42.470400Z"/>
+</wc-entries>

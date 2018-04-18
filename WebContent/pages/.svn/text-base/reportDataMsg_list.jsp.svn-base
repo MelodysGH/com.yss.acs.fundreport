@@ -1,0 +1,147 @@
+<%@ page pageEncoding="utf-8" language="java" %>
+<%@ page import="com.yss.sofa.framework.i18n.I18N"%>
+<%@	page import="java.util.Date,java.util.Map"%>
+<%@	page import="com.yss.acs.fundreport.common.biz.Constants"%>
+<%@ page import="com.yss.sofa.framework.web.util.WebUtil"%>
+<%@ page import="com.yss.sofa.framework.context.SOFAContext"%>
+<%@ taglib uri="http://sofa.ysstech.com/tag/html" prefix="html"%>
+<%@ taglib uri="http://sofa.ysstech.com/tag/widget" prefix="c"%>
+<%
+    String ftype = "["
+					+"{value:\"1\",text:\"日报\"},"
+    				+"{value:\"2\",text:\"月报\"},"
+					+"{value:\"3\",text:\"季报\"},"
+    				+"{value:\"4\",text:\"半年报\"},"
+					+"{value:\"5\",text:\"年报\"},"
+					+"{value:\"-1\",text:\"其他\"}"
+    				+"]";
+	String flag = "["
+					+"{value:\"1\",text:\"成功\"},"
+					+"{value:\"0\",text:\"失败\"}"
+					+"]";
+	String reportcode = "["
+					+"{value:\"ZCFZ\",text:\"资产负债表\"},"
+					+"{value:\"SYZQY\",text:\"所有者权益表\"},"
+					+"{value:\"LRB\",text:\"利润表\"},"
+					+"{value:\"NSSBDZZBB\",text:\"纳税申报对账指标表\"},"
+					+"{value:\"JJTZQK\",text:\"基金投资情况表\"}"
+					+"]";
+	request.setAttribute("ftype", ftype);
+	request.setAttribute("flag", flag);
+	request.setAttribute("reportcode", reportcode);
+	request.setAttribute("root", WebUtil.getBundleWebContextBaseUrl(request, Constants.REPORT_CONTEXT_PATH));
+	%>
+<style type="text/css">
+.acs-toolbar-execute{
+	background-image: url(./resources/images/execute_01.png);
+}
+</style>
+<html:jsp>
+		<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<title>报表落地信息浏览</title>
+		<script type="text/javascript">
+
+		var rootPath = '${root}';
+		</script>
+		<html:resource/>
+		<script type="text/javascript" src="./resources/script/common.js"></script>
+		<script type="text/javascript" src="./resources/script/reportDataMsg.js"></script>
+		</head>
+		<body>
+			<!-- 功能权限校验标签，code 为功能编码 对应functions.xml中的配置 -->
+			<c:toolbar useDefault="false"  bindGrid="grid"  baseUrl="reportDataMsg.ctrl?">
+				<c:toolbar.button id="readFile" text="一键入库" iconCls="acs-toolbar-execute" onClick="readFile"/>
+
+			</c:toolbar>
+			<c:search id="mySearch" onBeforeSubmit="search">
+                  <c:Container layout="form">
+                     <c:Container layout="table" style="padding:5px 0px 0" region="center" frame="true" >      
+                         <c:DefaultConfig labelWidth="120" />
+                         <c:layoutConfig columns="4"/>
+                <c:Container>
+					<c:treeview id="fsetcode"
+						label="套账" 
+						width="150" 
+						displayField="name"  
+						autoQuery="false"
+						remote="true"
+						multiSelect="true" 
+						singleExpand="true" 
+						minChars="0" 
+						queryParam="keyword"
+						onBeforeLoad = "onBeforeLoad"
+						url="./reportDataMsg.ctrl?method=getAssetTree"/>
+                </c:Container>
+                <c:Container>
+                     	<c:listview id="reporttype"
+                      	 width="150"
+			             label="期间类型"
+                         readOnly="true" 
+                         valueField="value"
+					     dataSource="${ftype}"/>
+                </c:Container>
+                 <c:Container>
+                     	<c:listview id="reportcode"
+                      	 width="150"
+			             label="报表类型"
+                         readOnly="true" 
+                         valueField="value"
+					     dataSource="${reportcode}"/>
+                </c:Container>
+                <c:Container style="margin-left:10px;">
+                        <c:Button  type="submit" value="查询"  style="padding-bottom:5px;"/>
+                </c:Container>
+                <c:Container>
+                     	<c:calendar id="reportstart"
+                     	 width="150"
+                     	 onSelect = "setDates"
+			             label="开始时间"/>
+                </c:Container>
+                <c:Container>
+                     	<c:calendar id="reportend"
+                     	 width="150"
+                     	 onSelect = "setDates"
+			             label="结束时间"/>
+                </c:Container>
+                <c:Container>
+                     	<c:listview id="flag"
+                      	 width="150"
+			             label="落地状态"
+                         readOnly="true" 
+                         valueField="value"
+					     dataSource="${flag}"/>
+                </c:Container>
+               
+                 <c:Container style="margin-left:10px;">
+                        <c:Button  type="button" value="重置" onClick="resetSearch"/>
+                </c:Container>
+                     </c:Container>
+                   </c:Container>
+			    </c:search>
+				<c:grid id="grid" 
+						multiSelect="true" 
+						pageSize="30" 
+						url="reportDataMsg.ctrl?method=getReportDataMsg&search=0" 
+						fit="true" 
+						idBind="id"
+						fields="id,fsetcode,fsetname,reportcode,reporttype"
+						autoQuery="false"
+						onRender="gridLoad" >
+					<%-- 权限插件 --%>
+					
+					<c:column align="center"  width="100" sortable="true" text="落地状态"  dataBind="flag" renderer="getFlagText"/>
+					<c:column align="left"    width="200" sortable="true"  text="套账"	 dataBind="fsetname_"/>
+					<c:column align="center"  width="150" sortable="true"  text="报表名称" dataBind="reportcode" renderer="getReportName"/>
+					<c:column align="center"  width="100" sortable="true"  text="期间类型" dataBind="reporttype"  renderer="getTypeText" />
+					<c:column align="center"  width="120" sortable="true"  text="开始时间" dataBind="reportstart" />
+					<c:column align="center"  width="120" sortable="true"  text="结束时间" dataBind="reportend" />
+					<c:column align="left"  width="200" sortable="true"  text="落地时间" dataBind="downtime" renderer="getDownTimeText"/>
+					<!-- 定义每一行数据的功能操作 -->
+					<c:operation useDefault="false"  baseUrl="reportDataMsg.ctrl?"  printable="false" >
+						<c:param id="execute" text="执行" onClick="execute" />
+						<c:param id="viewReport" text="浏览报表" onClick="viewReport" />
+					</c:operation>
+				</c:grid>
+		</body>
+</html:jsp>

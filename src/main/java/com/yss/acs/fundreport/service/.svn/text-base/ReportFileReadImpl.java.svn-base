@@ -1,0 +1,35 @@
+package com.yss.acs.fundreport.service;
+
+import java.io.File;
+
+import com.yss.acs.fundreport.biz.ReportReadThread;
+import com.yss.sofa.framework.services.task.TaskExecutionContext;
+import com.yss.sofa.framework.services.task.TaskExecutionException;
+import com.yss.sofa.framework.services.task.TaskService;
+import com.yss.sofa.framework.util.SOFAEnvionmentUtil;
+
+/** 
+ * 本类的功能简述.本类的功能详细说明。补充修订记录
+ * @author  Kris
+ * @version 1.0.0,2016-6-15
+ * @since   开始提供该类、接口的版本号
+ */
+public class ReportFileReadImpl  implements TaskService {
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	public void execute(TaskExecutionContext arg0) throws TaskExecutionException {
+		  String path=SOFAEnvionmentUtil.getSOFAHomePath()+"/report/.export";
+		  File file=new File(path);
+		  File[] tempList = file.listFiles();
+		  for (int i = 0; i < tempList.length; i++) {
+		   if (tempList[i].isDirectory()&&!tempList[i].getName().equalsIgnoreCase("_temp")) {
+		    ReportReadThread thread = new ReportReadThread(tempList[i].getName());
+		    thread.run();
+		   }
+		  }
+	}
+}

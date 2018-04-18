@@ -1,0 +1,270 @@
+package com.yss.acs.fundreport.biz;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+import org.hibernate.Session;
+
+import com.yss.acs.fundreport.common.biz.Constants;
+import com.yss.sofa.framework.biz.GenericCRUDBO;
+import com.yss.sofa.framework.dao.Dao;
+import com.yss.sofa.framework.dao.hibernate.HibernateUtil;
+import com.yss.sofa.framework.log.SOFALogger;
+import com.yss.sofa.framework.log.SOFALoggerFactory;
+import com.yss.sofa.framework.util.DateUtil;
+import com.yss.sofa.framework.util.SOFAEnvionmentUtil;
+
+/** 
+ * 本类的功能简述.本类的功能详细说明。补充修订记录
+ * @author  Kris
+ * @version 1.0.0,2016-6-15
+ * @since   开始提供该类、接口的版本号
+ */
+public class ReportReadThread  extends GenericCRUDBO implements Runnable{
+ private SOFALogger log = SOFALoggerFactory.getSOFALogger(ReportReadThread.class);
+ private String reportCode;
+
+public ReportReadThread(String reportCode) {
+	super();
+	this.reportCode = reportCode;
+}
+
+public void run() {
+	String path=SOFAEnvionmentUtil.getSOFAHomePath()+"/report/.export/"+this.reportCode;
+    String path_copy =SOFAEnvionmentUtil.getSOFAHomePath()+"/report/.export/_temp";
+    log.info("开始读取:"+path+"下文件");
+    List<String> datas = new ArrayList<String>();
+    File file_copy = new File(path_copy);
+    if(!file_copy.exists()){
+    	 log.info("创建临时文件夹:"+path_copy);
+    	file_copy.mkdirs();
+    } 
+    try {
+		File files=new File(path);
+		File[] tempList = files.listFiles();	 
+		for (int i = 0; i < tempList.length; i++) {
+		  File file = tempList[i];
+		  if (file.isFile()&&file.getName().endsWith(".log")) {
+			    BufferedReader reader = new BufferedReader(new FileReader(file));  
+			    String tempString = null;  
+			    while ((tempString = reader.readLine()) != null) {   
+			    	datas.add(tempString);
+	            }  
+			    reader.close();  
+			   }
+			}
+		log.info("文件读取完毕,开始保存:"+path+"(共读取了"+tempList.length+"个文件)");
+		saveFilesContent(datas);
+		log.info("数据保存完毕:"+path+"(共保存数据"+datas.size()+"条,其中包含报表数据及落地信息数据)");
+
+		boolean flag = fileToZip(path,path_copy,this.reportCode+"_"+DateUtil.formatDate(new Date(), "yyyyMMddHHmmss"));
+		if(flag){
+			deleteDir(path);
+		}
+		log.info("已保存数据原始文件删除成功:"+path+"(落地成功的文件将已压缩包的形式保存到"+path_copy+"中)");
+	} catch (Exception e) {
+		e.printStackTrace();
+	}
+	}
+@SuppressWarnings("deprecation")
+public void saveFilesContent(List<String> datas) throws Exception{
+
+	Dao dao = this.getDao(this.getDataSourceMapping());
+	Session session = HibernateUtil.getSession(dao);
+	Connection conn = session.connection();
+	StringBuffer addSql = new StringBuffer();
+	StringBuffer addMsgSql = new StringBuffer();
+	
+	StringBuffer delSql = new StringBuffer();
+	StringBuffer delMsgSql = new StringBuffer();
+	addSql.append("insert into td_bbzx ");
+	addSql.append("(fsetcode,reportcode,reporttype,reportstart,reportend,rowsnum,");
+	addSql.append("a,b,c,d,e,f,f2,f3,i,j,downtime) values");
+	addSql.append("(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+	
+	addMsgSql.append("insert into td_bbzxmsg ");
+	addMsgSql.append(" (fsetcode,reportcode,reporttype,reportstart,reportend,id,flag,downtime) values ");
+	addMsgSql.append(" (?,?,?,?,?,?,?,?) ");
+	
+	delSql.append("delete from td_bbzx where fsetcode=? and reportcode=? and reporttype=? and reportstart=? and reportend=? ");
+	delMsgSql.append("delete from td_bbzxmsg  where  (fsetcode=? and reportcode=? and reporttype=? and reportstart=? and reportend=?)");
+	
+	try {
+		PreparedStatement pstm_add = null;
+		PreparedStatement pstm_addmsg = null;
+		
+		PreparedStatement pstm_del = null;
+		PreparedStatement pstm_delmsg = null;
+		pstm_add = conn.prepareStatement(addSql.toString());
+		pstm_addmsg = conn.prepareStatement(addMsgSql.toString());
+		
+		pstm_del = conn.prepareStatement(delSql.toString());
+		pstm_delmsg = conn.prepareStatement(delMsgSql.toString());
+		for(String data:datas){
+			if(data.indexOf("|")>-1){
+			String arrs[] = data.split("\\|");
+			pstm_add.setString(1, arrs[0]);//套账
+			pstm_add.setString(2, arrs[1]);//报表编号
+			pstm_add.setString(3, arrs[2]);//报表期间类型
+			pstm_add.setString(4, arrs[3]);//开始时间
+			pstm_add.setString(5, arrs[4]);//结束时间
+			
+			pstm_add.setString(6,arrs[5]);//数据所在行数
+
+			pstm_add.setString(7, arrs[6]);//第1列数值
+			pstm_add.setString(8, arrs[7]);//第2列数值
+			pstm_add.setString(9, arrs[8]);//第3列数值
+			pstm_add.setString(10, arrs[9]);//第4列数值
+			pstm_add.setString(11,arrs[10]);//第5列数值
+			pstm_add.setString(12, arrs[11]);//第6列数值
+			pstm_add.setString(13, arrs[12]);//第7列数值
+			pstm_add.setString(14, arrs[13]);//第8列数值
+			pstm_add.setString(15, arrs[14]);//第9列数值
+			pstm_add.setString(16, arrs[15]);//第10列数值
+			pstm_add.setString(17, "自动:"+arrs[16]+"|"+DateUtil.formatDate(new Date(), DateUtil.FORMAT_ONE));//落地时间
+			pstm_add.addBatch();
+			}
+			else{
+				if(data.indexOf("#")>-1){
+					String arrs[] = data.split("#");
+					pstm_addmsg.setString(1, arrs[0]);//套账
+					pstm_addmsg.setString(2, arrs[1]);//报表编号
+					pstm_addmsg.setString(3, arrs[2]);//报表期间类型
+					pstm_addmsg.setString(4, arrs[3]);//开始时间
+					pstm_addmsg.setString(5, arrs[4]);//结束时间
+					pstm_addmsg.setString(6, arrs[5]);//id
+					pstm_addmsg.setString(7, arrs[6]);//落地标志 1:成功,0:失败
+					pstm_addmsg.setString(8, "自动:"+arrs[7]+"|"+DateUtil.formatDate(new Date(), DateUtil.FORMAT_ONE));//落地时间
+					
+					pstm_del.setString(1, arrs[0]);//套账
+					pstm_del.setString(2, arrs[1]);//报表编号
+					pstm_del.setString(3, arrs[2]);//报表期间类型
+					pstm_del.setString(4, arrs[3]);//开始时间
+					pstm_del.setString(5, arrs[4]);//结束时间
+	
+					
+					pstm_delmsg.setString(1, arrs[0]);//套账
+					pstm_delmsg.setString(2, arrs[1]);//报表编号
+					pstm_delmsg.setString(3, arrs[2]);//报表期间类型
+					pstm_delmsg.setString(4, arrs[3]);//开始时间
+					pstm_delmsg.setString(5, arrs[4]);//结束时间
+		
+					
+					pstm_addmsg.addBatch();
+					pstm_del.addBatch();
+					pstm_delmsg.addBatch();
+				}
+			}
+		}
+		pstm_del.executeBatch();
+		pstm_delmsg.executeBatch();
+		pstm_add.executeBatch();
+		pstm_addmsg.executeBatch();
+	
+	} catch (Exception e) {
+		e.printStackTrace();
+		throw new Exception(e);
+	}
+}
+public String getDataSourceMapping() {
+	  return Constants.FUNDREPORT_DATASOURCE_MAPPING;
+}
+/**
+ * 
+ * 创建备份压缩包到_temp文件夹
+ * @param sourceFilePath
+ * @param zipFilePath
+ * @param fileName
+ * @return
+ * @author  Kris
+ * @date    2016-6-17
+ */
+public  boolean fileToZip(String sourceFilePath,String zipFilePath,String fileName){  
+    boolean flag = false;  
+    File sourceFile = new File(sourceFilePath);  
+    FileInputStream fis = null;  
+    BufferedInputStream bis = null;  
+    FileOutputStream fos = null;  
+    ZipOutputStream zos = null;  
+      
+    if(sourceFile.exists() == false){  
+    	log.info("待压缩的文件目录:"+sourceFilePath+"不存在.");  
+    }else{  
+        try {  
+            File zipFile = new File(zipFilePath + "/" + fileName +".zip");  
+            if(zipFile.exists()){  
+            	log.info(zipFilePath + "目录下存在名字为:" + fileName +".zip" +"打包文件.");  
+            }else{  
+                File[] sourceFiles = sourceFile.listFiles();  
+                if(null == sourceFiles || sourceFiles.length<1){  
+                	log.info("待压缩的文件目录:" + sourceFilePath + "里面不存在文件,无需压缩.");  
+                }else{  
+                    fos = new FileOutputStream(zipFile);  
+                    zos = new ZipOutputStream(new BufferedOutputStream(fos));  
+                    byte[] bufs = new byte[1024*10];  
+                    for(int i=0;i<sourceFiles.length;i++){  
+                        //创建ZIP实体，并添加进压缩包  
+                        ZipEntry zipEntry = new ZipEntry(sourceFiles[i].getName());  
+                        zos.putNextEntry(zipEntry);  
+                        //读取待压缩的文件并写进压缩包里  
+                        fis = new FileInputStream(sourceFiles[i]);  
+                        bis = new BufferedInputStream(fis, 1024*10);  
+                        int read = 0;  
+                        while((read=bis.read(bufs, 0, 1024*10)) != -1){  
+                            zos.write(bufs,0,read);  
+                        }  
+                        if(null != fis) fis.close();  
+                        if(null != bis) bis.close();  
+                    }  
+                    flag = true;  
+                }  
+            }  
+        } catch (FileNotFoundException e) {  
+            e.printStackTrace();  
+            throw new RuntimeException(e);  
+        } catch (IOException e) {  
+            e.printStackTrace();  
+            throw new RuntimeException(e);  
+        } finally{  
+            //关闭流  
+            try {  
+                if(null != bis) bis.close();  
+                if(null != zos) zos.close();  
+                if(null != fis) fis.close();  
+                if(null != bis) bis.close();  
+               
+            } catch (IOException e) {  
+                e.printStackTrace();  
+                throw new RuntimeException(e);  
+            }  
+        }  
+    }  
+    return flag;  
+}  
+public void deleteDir(String path) throws Exception{
+	File files=new File(path);
+	File[] tempList = files.listFiles();	 
+    try {
+		for (int i=0; i<tempList.length; i++) {
+		 File file = tempList[i];
+		 file.delete();
+		}
+	} catch (Exception e) {
+		throw new Exception(e);
+	}
+	}
+}

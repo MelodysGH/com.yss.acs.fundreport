@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wc-entries
+   xmlns="svn:">
+<entry
+   repos="http://192.168.100.238/svn/acssvn"
+   name=""
+   revision="310291"
+   last-author="zhangxiaorui"
+   url="http://192.168.100.238/svn/acssvn/Trunk/SourceCode/21GZ3.5/report20/com.yss.acs.fundreport/src/main/java/com/yss/acs/fundreport/common"
+   uuid="a366b9f8-ae6c-4d04-a85b-0020d49e262e"
+   committed-rev="298649"
+   kind="dir"
+   committed-date="2018-03-12T02:05:29.933578Z"/>
+<entry
+   name="biz"
+   kind="dir"/>
+</wc-entries>

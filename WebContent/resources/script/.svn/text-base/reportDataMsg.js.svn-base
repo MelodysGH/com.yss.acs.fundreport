@@ -1,0 +1,217 @@
+
+function onBeforeLoad(tree){
+var role="";
+var usercode_ =""; 
+var location = window.parent.location+"";
+var arr = location.substring(location.indexOf("?")+1).split("&"); 
+if(window.parent.portal && window.parent.portal.openCustomTab){
+	usercode_ = window.CONTEXT.USERNAME;
+} else {
+	var arr = location.substring(location.indexOf("?")+1).split("&"); 
+	usercode_ = arr[0].substring(arr[0].indexOf("=")+1);
+	role = arr[1].substring(arr[1].indexOf("=")+1);
+}
+tree.setRequestParams({
+	usercode:usercode_,
+	rolecode:role,
+	keyword:tree.lastQuery
+	});	
+}
+function getReportName(v){
+	if(v.indexOf("LRB")>-1){
+		return "利润表";
+	}else if(v.indexOf("ZCFZB")>-1){
+		return "资产负债表";
+	}else if(v.indexOf("SYZQYB")>-1){
+		return "所有者权益表";
+	}else if(v.indexOf("TZQK")>-1){
+		return "基金投资情况表";
+	}else if(v.indexOf("NSSBDZZBB")>-1){
+		return "纳税申报对账指标表";
+	}else{
+		return "";
+	}	
+}
+function getTypeText(v){
+	if("1" == v){
+		return "日报";
+	}else if("2" == v){
+		return "月报";
+	}else if("3" == v){
+		return "季报";
+	}else if("4" == v){
+		return "半年报";
+	}else if("5" == v){
+		return "年报";
+	}else if("-1" == v){
+		return "其他";
+	}else{
+		return "";
+	}	
+}
+
+function getRealType(v){
+	if("1" == v){
+		return "day";
+	}else if("2" == v){
+		return "month";
+	}else if("3" == v){
+		return "quarter";
+	}else if("4" == v){
+		return "half";
+	}else if("5" == v){
+		return "year";
+	}else{
+		return "other";
+	}	
+}
+
+function getDownTimeText(v){
+	if(v.indexOf("手工")>-1){
+		return "<font color='red'>"+v+"</font>";
+	}else{
+		return v;
+	}
+}
+
+function getFlagText(v){
+	if("1" == v){
+		return "成功";
+	}else if("0" == v){
+		return "<font color='red'>失败</font>";
+	}else{
+		return "";
+	}
+}
+/**
+ * 查询
+ * @returns {Boolean}
+ */
+function search(){
+	//添加查询参数
+	var fsetcode = Ext.getCmp("fsetcode").getValue();//套账
+	var reporttype = Ext.getCmp("reporttype").getValue();//期间类型
+	var reportcode = Ext.getCmp("reportcode").getValue();//报表类型
+	var reportstart = Ext.getCmp("reportstart").getValue();//开始时间
+	var reportend = Ext.getCmp("reportend").getValue();//结束时间
+	var flag = Ext.getCmp("flag").getValue();//执行状态
+	if(reportstart){
+		reportstart = reportstart.format("Y-m-d");
+	}
+	if(reportend){
+		reportend = reportend.format("Y-m-d");
+	}
+	Ext.getCmp('grid').setUrl("reportDataMsg.ctrl?method=getReportDataMsg");
+	Ext.getCmp('grid').setRequestParams({
+		search : 1,
+		fsetcode : fsetcode,
+		reporttype :reporttype,
+		reportcode :reportcode,
+		reportstart :reportstart,
+		reportend :reportend,
+		flag:flag
+		});
+	Ext.getCmp('grid').reload();
+	return false;
+}
+
+function resetSearch(){
+	 Ext.getCmp("fsetcode").reset();
+	 Ext.getCmp("reporttype").reset();
+	 Ext.getCmp("reportcode").reset();
+	 Ext.getCmp("reportstart").reset();
+	 Ext.getCmp("reportend").reset();
+	 Ext.getCmp("flag").reset();
+	 
+	 Ext.getCmp("reportstart").setMaxValue();
+	 Ext.getCmp("reportstart").setMinValue();
+	 Ext.getCmp("reportend").setMaxValue();
+	 Ext.getCmp("reportend").setMinValue();	 
+}
+
+function setDates(){
+	if(Ext.getCmp("reportstart").getValue()){
+		Ext.getCmp("reportend").setMinValue(Ext.getCmp("reportstart").getValue().format("Y-m-d"));
+	}
+	if(Ext.getCmp("reportend").getValue()){
+		Ext.getCmp("reportstart").setMaxValue(Ext.getCmp("reportend").getValue().format("Y-m-d"));
+	}
+}
+/**
+ * 重新执行
+ * @param record
+ */
+function execute(record){
+	var mes = "执行将覆盖原有数据,确定要执行吗?"
+	sofa.confirm(mes,
+			function(btn) {
+				if (btn == 'yes') {
+					Ext.Ajax.request({
+						method: "POST",
+						async: false,
+						url: "./reportDataMsg.ctrl?method=executeDownData",
+						params: {
+							"id" : record.id,
+							"fsetcode" : record.fsetcode,
+							"fsetname" : record.fsetname,
+							"fsetname_" : record.fsetname_,
+							"reportcode" : record.reportcode,
+							"reportname" : getReportName(record.reportcode),
+							"reporttype" : record.reporttype,
+							"reporttype_" : getRealType(record.reporttype),
+							"reportstart" : record.reportstart,
+							"reportend" : record.reportend,
+							"user_id" : window.CONTEXT.USER,
+							"user_name" : window.CONTEXT.USERNAME
+						},
+						success: function(data) {
+							sofa.alert("执行成功!");
+							search();
+						},
+						failure: function(m,s){
+							sofa.error('', m.responseText);
+						}
+					});
+					return false;
+					}
+				});
+}
+/**
+ * 报表浏览
+ */
+function viewReport(record){
+	//报表参数JSON
+	var json={};
+	//必须含有的系统级参数 SYS_*
+	json['SYS_REPORT_CODE']=record.reportcode;
+	json['SYS_REPORT_NAME']=getReportName(record.reportcode+"_"+record.reportcode);
+	json['SYS_USER_ID']=window.CONTEXT.USER;
+	json['SYS_USER_NAME']=window.CONTEXT.USERNAME;
+	//实际报表参数
+	json['product']=record.fsetcode;
+	json['__product__']=record.fsetname_;
+	json['ftype']=getRealType(record.reporttype);
+	json['__fsdate__']=record.reportstart;
+	json['__fedate__']=record.reportend;
+	json['__fdate__']=record.reportstart;
+	json['fmode']="0";
+	var apiPath = rootPath.replace("sofa-report","sofa-report-api");
+	window.parent.portal.openCustomTab(record.id,getReportName(record.reportcode+"_"+record.reportcode),apiPath+'renderer/render/report/'+record.reportcode,{params:Ext.encode(json)});
+}
+/**
+ * 读取入库文件
+ */
+function readFile(){
+	Ext.Ajax.request({
+		method: "POST",
+		async: false,
+		url: "./reportDataMsg.ctrl?method=readFile",
+		params: {},
+		success: function(data) {
+			sofa.alert("读取成功!");
+		},
+		failure: function(response){
+			sofa.error('', m.responseText);
+		}
+	});
+}

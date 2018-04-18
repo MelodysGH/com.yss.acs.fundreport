@@ -1,0 +1,472 @@
+//页面标题
+var title = title ? title : '';
+var paramPath = paramPath ? paramPath : "";
+
+// grid控件id,默认为grid
+var formWindow = formWindow ? formWindow : Ext.getCmp("formWindow");
+
+// 自定义重置数据、判断
+var formdata = {}, operate = "";
+// 默认表单提交之后，窗口关闭状态
+var submitAndCloseFlag = true;
+
+function gridLoad() {
+	var condition = " deleted = false order by createTime desc";
+	Ext.getCmp('grid').setRequestParams({
+		_queryCondition : condition
+	});
+	Ext.getCmp('grid').reload();
+}
+// 新增
+function add() {
+	formWindow.show();
+	operate = "add";
+	formWindow.setTitle("新增-" + title);
+	myForm.updateStatus(FORM.STATUS.ADD);
+	if (!Ext.isEmpty(Ext.getCmp("editReason"))) {
+		editReason.setVisible(false);
+		editReason.setAllowBlank(true);
+	}
+	if (!Ext.isEmpty(Ext.getCmp("deleteReason"))) {
+		deleteReason.setVisible(false);
+	}
+	initForm();
+}
+// 新增清空id
+function formStatusChange(form, status, data) {
+	myForm.setValues(data);
+	if (myForm.isStatus(FORM.STATUS.ADD)) {
+		// 新增清空id
+		id.clearValue();
+	}
+}
+
+// 查看
+function view(data) {
+	formWindow.show();
+	operate = "view";
+	myForm.updateStatus(FORM.STATUS.VIEW, data);
+	formWindow.setTitle("查看-" + title);
+	fillForm(data);
+	if (!Ext.isEmpty(Ext.getCmp("editReason"))) {
+		editReason.setVisible(true);
+		editReason.setAllowBlank(true);
+	}
+	if (!Ext.isEmpty(Ext.getCmp("deleteReason"))) {
+		deleteReason.setVisible(false);
+	}
+}
+
+// 复制
+function copy(data) {
+	formWindow.show();
+	operate = "copy";
+	formdata = data;
+	delete data.id;
+	delete data.relId;
+	myForm.updateStatus(FORM.STATUS.ADD, data);
+	formWindow.setTitle("复制-" + title);
+	fillForm(data);
+	if (!Ext.isEmpty(Ext.getCmp("editReason"))) {
+		editReason.setValue("");
+		editReason.setVisible(false);
+		editReason.setAllowBlank(true);
+	}
+}
+
+// 编辑
+function edit(data) {
+	formWindow.show();
+	operate = "edit";
+	formdata = data;
+	myForm.updateStatus(FORM.STATUS.EDIT, data);
+	formWindow.setTitle("编辑-" + title);
+	fillForm(data);
+	if (!Ext.isEmpty(Ext.getCmp("editReason"))) {
+		editReason.setValue("");
+		editReason.setVisible(true);
+		editReason.setAllowBlank(false);
+	}
+}
+
+// 新增时初始化表单
+function initForm() {
+	// 如果有起始日期，将起始日期默认设置为当天
+	if (!Ext.isEmpty(Ext.getCmp("startTime"))) {
+		startTime.setValue(new Date());
+	}
+}
+
+// 表单填充
+function fillForm(data) {
+}
+
+function beforeSubmit(json) {
+}
+
+// 表单提交成功返回信息
+function formSuccess(msg) {
+
+	if (submitAndCloseFlag) {
+		formWindow.close();
+	} else {
+		submitAndCloseFlag = true;
+		if (!myForm.isStatus(FORM.STATUS.EDIT)) {
+			reset();
+		}
+	}
+
+	Ext.getCmp('grid').reload();
+}
+
+// 表单提交错误返回
+function formError(msgObj, state) {
+	sofa.error('提交失败', msgObj);
+}
+
+// 返回
+function reback() {
+	formWindow.close();
+}
+
+// 重置
+function reset() {
+	if (operate == "add") {
+		add();
+	} else if (operate == "edit") {
+		edit(formdata);
+	} else if (operate == "copy") {
+		copy(formdata);
+	}
+}
+
+// 导出、打印
+function _export(param) {
+	return {
+		title : title,
+		tabulationTime : new Date().format('Y-m-d')
+	};
+}
+
+function isTrueOrFalse(v) {
+	if (v) {
+		return '是';
+	} else {
+		return '否';
+	}
+}
+// 通过code获取名称
+function getName(code, url) {
+	var name = "";
+	var condition = "deleted = false and checked = true and code = '" + code
+			+ "'";
+	Ext.Ajax.request({
+		method : "post",
+		url : url,
+		async : false,
+		params : {
+			_queryCondition : condition
+		},
+		success : function(data) {
+			if (data.responseText != "[]") {
+				var json = Ext.decode(data.responseText)[0];
+				name = json.name;
+			}
+		},
+		failure : function(m, s) {
+			sofa.alert(m.responseText + ":" + s);
+		}
+	});
+	return name;
+}
+// 通过id获取名称
+function getNameById(id, url) {
+	var name = "";
+	if (!Ext.isEmpty(id)) {
+		var condition = "deleted = false and id = '" + id + "'";
+		Ext.Ajax.request({
+			method : "post",
+			url : url,
+			async : false,
+			params : {
+				_queryCondition : condition
+			},
+			success : function(data) {
+				if (data.responseText != "[]") {
+					var json = Ext.decode(data.responseText)[0];
+					name = json.name;
+				}
+			},
+			failure : function(m, s) {
+				sofa.alert(m.responseText + ":" + s);
+			}
+		});
+	}
+	return name;
+}
+
+function toUpper(obj) {
+	obj.setValue(obj.getValue().toUpperCase());
+}
+/**
+ * 默认方法 显示显示历史的窗口，并且请求查询相应的历史记录
+ * 
+ * @param data
+ *            需要展示历史记录的某条记录内容
+ */
+function history(data) {
+	operate = "history";
+	historyWindow.show();
+	historyGrid.getStore().removeAll();
+	historyGrid.setRequestParams({
+		relId : data.id
+	});
+	historyGrid.reload();
+}
+/**
+ * 默认方法 设置提交后不关闭窗口状态 submitAndCloseFlag true--关闭， false--不关闭
+ */
+function save() {
+	submitAndCloseFlag = false;
+	myForm.onSubmit();
+}
+
+// grid数组列换行显示
+function splitRenderer(value, meta, record) {
+	if (!Ext.isEmpty(value)) {
+		return value.join("<br/>");
+	} else {
+		return "";
+	}
+}
+
+/**
+ * 设置参数对象的属性 (用于method=search的查询)
+ * 
+ * @author WangWenqing 调用案例： function testSetParamProperty(){ var paramArry =[];
+ *         paramArry.push(setParamProperty("deleted",false,"=","Boolean")); }
+ */
+function setParamProperty(field, value, operation, fieldType) {
+	var param = {};
+	param.field = field;
+	param.value = value;
+	param.operation = operation;
+	if (null != fieldType && (undefined != fieldType)) {
+		param.fieldType = fieldType;
+	}
+	return param;
+}
+
+// 设置控件状态
+// obj：控件本身；allowBlank：是否允许为空；disabled：是否可用；readOnly：是否只读；clearValue：是否清空属性值
+function setFieldStatus(obj, allowBlank, disabled, readOnly, clearValue) {
+	obj.setAllowBlank(allowBlank);
+	obj.setDisabled(disabled);
+	obj.setReadOnly(readOnly);
+	if (clearValue) {
+		obj.clearValue();
+	}
+}
+/**
+ * 格式化字符串（将字符串左补位至固定长度，如果超过固定长度，不做处理，原样返回）
+ * 
+ * @param str
+ *            要格式化的字符串
+ * @param len
+ *            长度
+ * @param c
+ *            补位字符
+ * @returns {String}
+ */
+function formatStr(str, len, c) {
+	var l = str.length;
+	var newStr = '';
+	if (parseInt(l) < parseInt(len)) {
+		for ( var i = 0; i < (parseInt(len) - parseInt(l)); i++) {
+			newStr += c;
+		}
+	}
+	return newStr + str;
+}
+/**
+ * **********************************Begin
+ * 进行加减乘除调用的方法*******************************************
+ */
+// 除法函数，用来得到精确的除法结果
+// 说明：javascript的除法结果会有误差，在两个浮点数相除的时候会比较明显。这个函数返回较为精确的除法结果。
+// 调用：accDiv(arg1,arg2)
+// 返回值：arg1除以arg2的精确结果
+function accDiv(arg1, arg2) {
+	var t1 = 0, t2 = 0, r1, r2;
+	try {
+		t1 = arg1.toString().split(".")[1].length
+	} catch (e) {
+	}
+	try {
+		t2 = arg2.toString().split(".")[1].length
+	} catch (e) {
+	}
+	with (Math) {
+		r1 = Number(arg1.toString().replace(".", ""))
+		r2 = Number(arg2.toString().replace(".", ""))
+		return (r1 / r2) * pow(10, t2 - t1);
+	}
+}
+/**
+ * **********************************Begin
+ * 进行加减乘除调用的方法*******************************************
+ */
+// 除法函数，用来得到精确的除法结果
+// 说明：javascript的除法结果会有误差，在两个浮点数相除的时候会比较明显。这个函数返回较为精确的除法结果。
+// 调用：accDiv(arg1,arg2)
+// 返回值：arg1除以arg2的精确结果
+function accDiv(arg1, arg2) {
+	var t1 = 0, t2 = 0, r1, r2;
+	try {
+		t1 = arg1.toString().split(".")[1].length
+	} catch (e) {
+	}
+	try {
+		t2 = arg2.toString().split(".")[1].length
+	} catch (e) {
+	}
+	with (Math) {
+		r1 = Number(arg1.toString().replace(".", ""))
+		r2 = Number(arg2.toString().replace(".", ""))
+		return (r1 / r2) * pow(10, t2 - t1);
+	}
+}
+
+// 给Number类型增加一个div方法，调用起来更加方便。
+Number.prototype.div = function(arg) {
+	return accDiv(this, arg);
+}
+
+// 乘法函数，用来得到精确的乘法结果
+// 说明：javascript的乘法结果会有误差，在两个浮点数相乘的时候会比较明显。这个函数返回较为精确的乘法结果。
+// 调用：accMul(arg1,arg2)
+// 返回值：arg1乘以arg2的精确结果
+function accMul(arg1, arg2) {
+	var m = 0, s1 = arg1.toString(), s2 = arg2.toString();
+	try {
+		m += s1.split(".")[1].length
+	} catch (e) {
+	}
+	try {
+		m += s2.split(".")[1].length
+	} catch (e) {
+	}
+	return Number(s1.replace(".", "")) * Number(s2.replace(".", ""))
+			/ Math.pow(10, m)
+}
+
+// 给Number类型增加一个mul方法，调用起来更加方便。
+Number.prototype.mul = function(arg) {
+	return accMul(arg, this);
+}
+
+// 加法函数，用来得到精确的加法结果
+// 说明：javascript的加法结果会有误差，在两个浮点数相加的时候会比较明显。这个函数返回较为精确的加法结果。
+// 调用：accAdd(arg1,arg2)
+// 返回值：arg1加上arg2的精确结果
+function accAdd(arg1, arg2) {
+	var r1, r2, m;
+	try {
+		r1 = arg1.toString().split(".")[1].length
+	} catch (e) {
+		r1 = 0
+	}
+	try {
+		r2 = arg2.toString().split(".")[1].length
+	} catch (e) {
+		r2 = 0
+	}
+	m = Math.pow(10, Math.max(r1, r2))
+	return Math.round(arg1 * m + arg2 * m) / m;
+}
+
+// 给Number类型增加一个add方法，调用起来更加方便。
+Number.prototype.add = function(arg) {
+	return accAdd(arg, this);
+}
+
+/**
+ * ************************************end
+ * 进行加减乘除调用的方法*******************************************
+ */
+
+// 乘法函数，用来得到精确的乘法结果
+// 说明：javascript的乘法结果会有误差，在两个浮点数相乘的时候会比较明显。这个函数返回较为精确的乘法结果。
+// 调用：accMul(arg1,arg2)
+// 返回值：arg1乘以arg2的精确结果
+function accMul(arg1, arg2) {
+	var m = 0, s1 = arg1.toString(), s2 = arg2.toString();
+	try {
+		m += s1.split(".")[1].length
+	} catch (e) {
+	}
+	try {
+		m += s2.split(".")[1].length
+	} catch (e) {
+	}
+	return Number(s1.replace(".", "")) * Number(s2.replace(".", ""))
+			/ Math.pow(10, m)
+}
+
+// 给Number类型增加一个mul方法，调用起来更加方便。
+Number.prototype.mul = function(arg) {
+	return accMul(arg, this);
+}
+
+// 加法函数，用来得到精确的加法结果
+// 说明：javascript的加法结果会有误差，在两个浮点数相加的时候会比较明显。这个函数返回较为精确的加法结果。
+// 调用：accAdd(arg1,arg2)
+// 返回值：arg1加上arg2的精确结果
+function accAdd(arg1, arg2) {
+	var r1, r2, m;
+	try {
+		r1 = arg1.toString().split(".")[1].length
+	} catch (e) {
+		r1 = 0
+	}
+	try {
+		r2 = arg2.toString().split(".")[1].length
+	} catch (e) {
+		r2 = 0
+	}
+	m = Math.pow(10, Math.max(r1, r2))
+	return Math.round(arg1 * m + arg2 * m) / m;
+}
+
+// 给Number类型增加一个add方法，调用起来更加方便。
+Number.prototype.add = function(arg) {
+	return accAdd(arg, this);
+}
+
+/**
+ * ************************************end
+ * 进行加减乘除调用的方法*******************************************
+ */
+
+// 根据参数代码和业务日期返回参数值
+function getParamValueByCode(code, date) {
+	var value = "";
+	if (!Ext.isEmpty(code)) {
+		Ext.Ajax.request({
+			method : 'POST',
+			url : paramPath + "./parameterMode.ctrl?method=getValueByCode",
+			params : {
+				code : code,
+				bizDate : date
+			},
+			async : false,
+			success : function(xhr) {
+				value = xhr.responseText;
+			},
+			failure : function(xhr) {
+				sofa.error('', xhr.responseText);
+			}
+		});
+	}
+	return value;
+}

@@ -1,0 +1,42 @@
+package com.yss.acs.fundreport.service;
+import java.io.Serializable;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
+import com.yss.acs.fundreport.biz.ReportDataBO;
+import com.yss.sofa.framework.config.GlobalConfigFactory;
+import com.yss.sofa.framework.services.ServiceFactory;
+import com.yss.sofa.framework.services.report.ReportCustomFile;
+import com.yss.sofa.framework.services.report.ReportCustomProcessor;
+import com.yss.sofa.framework.services.report.ReportService;
+
+
+/** 
+ * 
+ * @author  Kris
+ * @version 1.0.0,2016-5-5
+ * @since   开始提供该类、接口的版本号
+ * @see     对类、属性、方法的说明 参考转向，也就是相关主题
+ * @Description 本类的功能简述.本类的功能详细说明。补充修订记录
+ */
+public class ReportExcelDataDownByOneImpl implements ReportCustomFile{
+    private static final long serialVersionUID = 1L;
+    
+    @Autowired
+    public ReportDataBO reportDataBO;    
+   
+	public byte[] export(Map<String, Serializable> report) {
+    	reportDataBO.export(report,false);
+		return (byte[]) report.get("excel");
+	}
+	public String getTypeName() {
+		return "导出excel并入库";
+	}
+	public String getTypeSuffix() {
+		return ".xls";
+	}
+}
+
+
+

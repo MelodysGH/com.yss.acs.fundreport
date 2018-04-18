@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wc-entries
+   xmlns="svn:">
+<entry
+   repos="http://192.168.100.238/svn/acssvn"
+   name=""
+   revision="313130"
+   last-author="zhangxiaorui"
+   url="http://192.168.100.238/svn/acssvn/Trunk/SourceCode/21GZ3.5/report20/com.yss.acs.fundreport/src/main/java/com/yss/acs/fundreport/service"
+   uuid="a366b9f8-ae6c-4d04-a85b-0020d49e262e"
+   committed-rev="313119"
+   kind="dir"
+   committed-date="2018-04-17T08:17:24.785404Z"/>
+<entry
+   name="IFundReportService.java"
+   revision="310291"
+   checksum="92ac3a24cc16e05f02d0ce1510721c98"
+   last-author="zhangxiaorui"
+   committed-rev="195235"
+   text-time="2016-12-14T07:28:15.595000Z"
+   kind="file"
+   committed-date="2016-12-14T07:28:15.595828Z"/>
+<entry
+   name="ReportDataDownBatchImpl.java"
+   last-author="zhangxiaorui"
+   text-time="2018-04-17T08:17:24.785000Z"
+   committed-rev="313119"
+   kind="file"
+   committed-date="2018-04-17T08:17:24.785404Z"
+   checksum="470051118d7264c42afbdbb9f2444943"/>
+<entry
+   name="ReportDataDownByOneImpl.java"
+   last-author="zhangxiaorui"
+   text-time="2018-04-17T08:17:24.785000Z"
+   committed-rev="313119"
+   kind="file"
+   committed-date="2018-04-17T08:17:24.785404Z"
+   checksum="1265c971a2508381e4cf8b309e6e8118"/>
+<entry
+   name="ReportDataForXBRLImpl.java"
+   revision="310291"
+   checksum="3e66f1d29ce43eb479fb038133eb2053"
+   last-author="zhangxiaorui"
+   committed-rev="200211"
+   text-time="2017-01-17T09:49:20.651000Z"
+   kind="file"
+   committed-date="2017-01-17T09:49:20.651857Z"/>
+<entry
+   name="ReportExcelDataDownByOneImpl.java"
+   revision="310291"
+   checksum="66531e4e1c00996803e7065a5e86cc07"
+   last-author="zhangxiaorui"
+   committed-rev="288062"
+   text-time="2018-01-31T11:15:41.145000Z"
+   kind="file"
+   committed-date="2018-01-31T11:15:41.145643Z"/>
+<entry
+   name="ReportFileReadImpl.java"
+   revision="310291"
+   checksum="490394ac78285d437694776310f7ba4b"
+   last-author="zhangxiaorui"
+   committed-rev="174814"
+   text-time="2016-06-17T05:42:10.361000Z"
+   kind="file"
+   committed-date="2016-06-17T05:42:10.361469Z"/>
+</wc-entries>

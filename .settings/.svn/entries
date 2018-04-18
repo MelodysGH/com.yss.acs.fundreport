@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wc-entries
+   xmlns="svn:">
+<entry
+   repos="http://192.168.100.238/svn/acssvn"
+   name=""
+   revision="310291"
+   last-author="zhangxiaorui"
+   url="http://192.168.100.238/svn/acssvn/Trunk/SourceCode/21GZ3.5/report20/com.yss.acs.fundreport/.settings"
+   uuid="a366b9f8-ae6c-4d04-a85b-0020d49e262e"
+   committed-rev="171129"
+   kind="dir"
+   committed-date="2016-05-20T02:30:42.470400Z"/>
+<entry
+   name="org.eclipse.jdt.core.prefs"
+   checksum="ea98b119e9ac3071ba3b2853371cceab"
+   last-author="zhangxiaorui"
+   committed-rev="171129"
+   text-time="2016-05-20T02:30:42.470000Z"
+   kind="file"
+   committed-date="2016-05-20T02:30:42.470400Z"/>
+<entry
+   name="org.eclipse.pde.core.prefs"
+   checksum="7d8215ca4f3a6dba94d336f2292520d7"
+   last-author="zhangxiaorui"
+   committed-rev="171129"
+   text-time="2016-05-20T02:30:42.470000Z"
+   kind="file"
+   committed-date="2016-05-20T02:30:42.470400Z"/>
+<entry
+   name="org.eclipse.wst.common.project.facet.core.xml"
+   checksum="180f5ab4ef212b8c9041c3dd9faf37ad"
+   last-author="zhangxiaorui"
+   committed-rev="171129"
+   text-time="2016-05-20T02:30:42.470000Z"
+   kind="file"
+   committed-date="2016-05-20T02:30:42.470400Z"/>
+</wc-entries>

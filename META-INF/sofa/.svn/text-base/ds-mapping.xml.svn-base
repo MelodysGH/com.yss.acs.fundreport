@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ds-mappings>
+	<!-- bundle-ds-id:组件内部使用的数据源ID。global-ds-id:合局配置中的数据源ID。islogger:组件日志库 -->
+	<ds-mapping bundle-sessionFactory-id="fundReportDataSource" global-ds-id="fundreport" islogger="true"/>
+	<ds-mapping bundle-sessionFactory-id="fundOtherDataSource" global-ds-id="fundacc_other" islogger="true"/>
+	<ds-mapping bundle-sessionFactory-id="fundDataSource" global-ds-id="fundacc" islogger="true"/>
+</ds-mappings>

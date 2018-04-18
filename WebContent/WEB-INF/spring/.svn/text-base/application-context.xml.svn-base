@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+	http://www.springframework.org/schema/beans/spring-beans-3.0.xsd 
+	http://www.springframework.org/schema/context 
+	http://www.springframework.org/schema/context/spring-context-3.0.xsd 
+	http://www.springframework.org/schema/aop 
+	http://www.springframework.org/schema/aop/spring-aop.xsd 
+	http://www.springframework.org/schema/tx 
+	http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+	<context:component-scan base-package="com.yss" />
+
+	<bean id="applicationContext"
+		class="com.yss.sofa.framework.web.util.ApplicationContextTransmitter" />
+
+	<!-- 拦截器 -->
+	<bean id="SOFAInterceptor" class="com.yss.sofa.framework.interceptor.SOFAInterceptor" />
+
+	<!-- 异常解析器 -->
+	<bean class="com.yss.sofa.framework.exception.ExceptionResolver" />
+
+
+	<!-- 配置事务管理器 -->
+	<bean id="transactionManager" class="com.yss.sofa.framework.datasource.TransactionManagerBean" />
+
+	<!-- 配置事务注解 ，配置该注解后可以通过@Transactional注解管理事务 -->
+	<context:annotation-config />
+	
+	<bean id="reportDataBO" class="com.yss.acs.fundreport.biz.ReportDataBO"/>
+	<bean id="reportDataMsgBO" class="com.yss.acs.fundreport.biz.ReportDataMsgBO"/>
+	
+</beans>

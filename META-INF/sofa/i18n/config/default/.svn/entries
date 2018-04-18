@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wc-entries
+   xmlns="svn:">
+<entry
+   repos="http://192.168.100.238/svn/acssvn"
+   name=""
+   revision="310291"
+   last-author="zhangxiaorui"
+   url="http://192.168.100.238/svn/acssvn/Trunk/SourceCode/21GZ3.5/report20/com.yss.acs.fundreport/META-INF/sofa/i18n/config/default"
+   uuid="a366b9f8-ae6c-4d04-a85b-0020d49e262e"
+   committed-rev="195241"
+   kind="dir"
+   committed-date="2016-12-14T08:02:47.694472Z"/>
+<entry
+   name="i18n_zh_CN.properties"
+   checksum="cbfabe8c1d05f5b023932e4af39d9164"
+   last-author="zhangxiaorui"
+   committed-rev="195241"
+   text-time="2016-12-14T08:02:47.694000Z"
+   kind="file"
+   committed-date="2016-12-14T08:02:47.694472Z"/>
+</wc-entries>

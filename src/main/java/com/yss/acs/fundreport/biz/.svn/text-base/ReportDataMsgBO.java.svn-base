@@ -1,0 +1,931 @@
+package com.yss.acs.fundreport.biz;
+
+
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import com.yss.acs.fundreport.common.biz.Constants;
+import com.yss.acs.fundreport.util.DBUtil;
+import com.yss.sofa.framework.biz.GenericCRUDBO;
+import com.yss.sofa.framework.dao.Dao;
+import com.yss.sofa.framework.util.StringUtil;
+import com.yss.sofa.framework.vo.ValueObject;
+
+/** 
+ * 核算报表数据落地处理类
+ * @author  Kris
+ * @version 1.0.0,2016-5-9
+ * @since   1.0
+ */
+public class ReportDataMsgBO extends GenericCRUDBO {
+    /**
+     * 类映射标识
+     */
+	 public static final String BEAN_ID = "reportDataMsgBO";
+	
+	public String getDataSourceMapping() {
+		  return Constants.FUNDREPORT_DATASOURCE_MAPPING;
+	}
+	 private String dataSource;
+	 
+	/**
+	 * @return the dataSource
+	 */
+	public String getDataSource() {
+		return dataSource;
+	}
+
+	/**
+	 * @param dataSource the dataSource to set
+	 */
+	public void setDataSource(String dataSource) {
+		this.dataSource = dataSource;
+	}
+
+	public ReportDataMsgBO() {
+		super();
+		// TODO Auto-generated constructor stub
+	}
+
+	public ReportDataMsgBO(Class<? extends ValueObject> persistentClass) {
+		super(persistentClass);
+		// TODO Auto-generated constructor stub
+	}
+	/**
+	 * 
+	 * 获取核算套账树
+	 * @param node 异步节点
+	 * @param keyword 快查关键字
+	 * @return
+	 * @throws Exception
+	 * @author  Kris
+	 * @date    2016-5-12
+	 */
+	public String getAssetTree(String node,String keyword,String usercode,String rolecode) throws Exception{
+		//指定数据源
+		Dao dao = null;
+		if(StringUtil.isNotEmpty(this.getDataSource())&&this.getDataSource().equals(Constants.FUND_OTHER_DATASOURCE_ID)){
+			dao = this.getDao(Constants.FUND_OTHER_DATASOURCE_MAPPING);
+		}else{
+			dao = this.getDao(Constants.FUND_DATASOURCE_MAPPING);
+		}
+		List<Object[]> result = new ArrayList<Object[]>();
+		StringBuffer treeSql = new StringBuffer();
+		StringBuffer data = new StringBuffer();
+		String type = StringUtil.isEmpty(node)?"":node.substring(1,node.length());
+		String param = "";
+		treeSql.append(" select * from ( ");
+		//关键字查询(套账号,套账名称 'key%')
+		if(!StringUtil.isEmpty(keyword)){
+			param = " and (tp.fsetcode like '"+keyword+"%' or tp.fsetname like '"+keyword+"%') and tp.fsetcode in(select distinct frightid from ts_userright where fuserid =(select fuserid from ts_user where fusername ='"+usercode+"') ";
+			if(!StringUtil.isEmpty(rolecode)){
+				param += "and fmoldid ='"+rolecode+"'";
+			}
+			param +=")";
+			treeSql.append(" select  'T'||tp.fsetcode as node,'S'||ftzfw||fjjlx as parent,'2' as levels, to_char(tp.fsetcode) as id ,1 as leaf, to_char(tp.fsetcode)||'_'||fsetname as name ");
+			treeSql.append("   from  tp_asset tp where tp. fsh=1"+param);
+		}else{//异步查询
+			param = " and tp.fsetcode in(select distinct frightid from ts_userright where fuserid =(select fuserid from ts_user where fusername ='"+usercode+"') ";
+			if(!StringUtil.isEmpty(rolecode)){
+				param += "and fmoldid ='"+rolecode+"'";
+			}
+			param +=")";
+			if(StringUtil.isEmpty(node)){//全部资产
+				treeSql.append("   select 'R' as node,'0' as parent,'1' as levels,'RO&一级' as id, 0 as leaf ,'全部资产' as name from dual ");//根节点
+			}else if("RO&一级".equals(node)){//一级投资范围(证券,非证券,公募)
+				treeSql.append("    select 'F'||code1.fcode as node,'R'as parent, '2'as levels,'F'||code1.fcode as id,0 as leaf,fname as name from tp_codeinfo  code1 ");
+				treeSql.append("       where code1.fparents='FTZFW' and code1.fcode in(select distinct tp.ftzfw from  tp_asset tp where tp. fsh=1 "+param+")");
+			}else if(node.startsWith("F")){//二级产品类型(证券投资基金,保险...等)
+				treeSql.append("   select 'S"+type+"'||code1.fcode as node,'F"+type+"'as parent, '3'as levels,'S"+type+"'||code1.fcode as id,0 as leaf,fname as name from tp_codeinfo code1  ");
+				treeSql.append("      where code1.fparents='FJJLX' and code1.fcode in(select distinct tp.fjjlx from  tp_asset tp where tp. fsh=1 "+param+" and tp.ftzfw="+type+") ");
+			}else if(node.startsWith("S")){//三级明细产品
+				treeSql.append("   select  'T'||tp.fsetcode as node,'S'||ftzfw||fjjlx as parent,'4' as levels, to_char(tp.fsetcode) as id, 1 as leaf,to_char(tp.fsetcode)||'_'||fsetname as name  from  tp_asset tp where tp. fsh=1 "+param+" and tp.fjjlx="+type);
+			}
+		}
+		treeSql.append(" )order by node ");
+		result = dao.findBySql(treeSql.toString(), new Object[]{});
+		data.append("[");
+		if(result.size()>0){
+			for (Object [] obj : result) {
+				data.append("{");
+				data.append("\"node\":\"").append(String.valueOf(obj[0])).append("\",");
+				data.append("\"parent\":\"").append(String.valueOf(obj[1])).append("\",");
+				data.append("\"level\":\"").append(String.valueOf(obj[2])).append("\",");
+				data.append("\"id\":\"").append(String.valueOf(obj[3])).append("\",");
+				data.append("\"leaf\":").append(String.valueOf(obj[4]).equals("1")).append(",");
+				data.append("\"name\":\"").append(String.valueOf(obj[5])).append("\"");
+				data.append("},");
+			}
+		data.setLength(data.length() - 1);
+		}
+		data.append("]");
+		return data.toString();
+	}
+	
+	
+	
+	
+	/**
+	 * 
+	 * 方法详细说明，包括用途、注意事项、举例说明等。
+	 * @param params
+	 * @return
+	 * @throws Exception
+	 * @author  Kris
+	 * @date    2016-8-3
+	 */
+	public String getAssetTree(String node,String keyword,List<Object> params) throws Exception{
+		//指定数据源
+		Dao dao = null;
+		if(StringUtil.isNotEmpty(this.getDataSource())&&this.getDataSource().equals(Constants.FUND_OTHER_DATASOURCE_ID)){
+			dao = this.getDao(Constants.FUND_OTHER_DATASOURCE_MAPPING);
+		}else{
+			dao = this.getDao(Constants.FUND_DATASOURCE_MAPPING);
+		}
+		/** 查询套账树设置规则 
+		 * ftzfw-投资范围,fjjglren-管理人,fgroupname-套账树
+		 * fjjlx-证券类型,fjjzl-一级分类,fjjzl2-二级分类,fjjzl3-三级分类
+		 * **/
+		String fuserid ="";//用户代码 userId
+		String roleid = "";//角色代码 roleId
+		String groupid ="";//分组Id groupId
+		String isShowDQ = getShowDQ("");//是否显示到期等配置
+		List<Object[]> result = new ArrayList<Object[]>();
+		if(params!=null){
+		 fuserid =String.valueOf(params.get(0));//用户代码 userId
+		 roleid = String.valueOf(params.get(1));//角色代码 roleId
+		 groupid =String.valueOf(params.get(2));//分组Id groupId
+		 isShowDQ = getShowDQ(fuserid);//是否显示到期等配置
+		}
+		
+		StringBuffer sql = new StringBuffer();
+		StringBuffer preSql = new StringBuffer();
+		Map<String, String> preMap = new HashMap<String, String>();
+		
+		StringBuffer data = new StringBuffer();
+		data.append("[");
+	
+		preSql.append("select a.fsetcode,a.fsetname from tp_asset a ");
+		preSql.append(" inner join tp_assetfinance p on a.fsetcode = p.fsetcode ");
+		if("3".equals(isShowDQ)||"4".equals(isShowDQ)||"0,3".equals(isShowDQ)||"1,3".equals(isShowDQ)||"1,4".equals(isShowDQ)||"0,4".equals(isShowDQ)){
+			preSql.append(" inner join tp_accountseal s on a.fsetcode = s.fsetcode and s.fsh=1 ");	
+		}
+		preSql.append(" where 1=1 ");
+		if(StringUtil.isEmpty(fuserid)||"null".equals(fuserid)){
+			preSql.append(" and a.fsetcode in(select frightid from ts_userright r where r.ftype=2)  and a.fsh = 1");
+		}else{
+			preSql.append(" and a.fsetcode in(select frightid from ts_userright r where r.fuserid='"+fuserid+"' and r.fmoldid='"+roleid+"' and r.ftype=2)  and a.fsh = 1");
+		}
+		
+		if("1".equals(isShowDQ)){
+			preSql.append(" and a.fjjdqdate <= ? ");
+		}else if("0".equals(isShowDQ)){
+			preSql.append(" and a.fjjdqdate > ? ");
+		}else if("3".equals(isShowDQ)){
+			preSql.append(" and (s.faccsealdate > ? or s.faccsealdate is null)");
+		}else if("4".equals(isShowDQ)){
+			preSql.append(" and s.faccsealdate <= ? ");
+		}else if("0,3".equals(isShowDQ)){
+			preSql.append(" and a.fjjdqdate > ? and (s.faccsealdate > ? or s.faccsealdate is null) ");
+		}else if("0,4".equals(isShowDQ)){
+			preSql.append(" and a.fjjdqdate > ? and s.faccsealdate <= ? ");
+		}else if("1,3".equals(isShowDQ)){
+			preSql.append(" and a.fjjdqdate <= ? and (s.faccsealdate > ? or s.faccsealdate is null) ");
+		}else if("1,4".equals(isShowDQ)){
+			preSql.append(" and a.fjjdqdate <= ? and s.faccsealdate <= ? ");
+		}
+		Object[] preParam = new Object[]{};		
+		if("0".equals(isShowDQ)||"1".equals(isShowDQ)||"3".equals(isShowDQ)||"4".equals(isShowDQ)){
+			preParam = new Object[]{DBUtil.toSqlDate(new Date())};
+
+		}else if("0,3".equals(isShowDQ)||"0,4".equals(isShowDQ)||"1,3".equals(isShowDQ)||"1,4".equals(isShowDQ)){
+			preParam = new Object[]{DBUtil.toSqlDate(new Date()),DBUtil.toSqlDate(new Date())};
+		}
+		if(!StringUtil.isEmpty(keyword)){//有查询条件
+			preSql.append(" and (");
+			for(String k:keyword.split(",")){
+				preSql.append(" a.fsetcode like '"+k+"%' or a.fsetname like '"+k+"%' or ");
+			}
+			preSql.setLength(preSql.length()-3);
+			preSql.append(") order by to_number(a.fsetcode) asc ");
+			result = dao.findBySql(preSql.toString(), preParam);
+			for(Object[] obj:result){
+				data.append("{");
+				data.append("\"node\":\"").append(obj[0]).append("\",");
+				data.append("\"parent\":\"").append("0").append("\",");
+				data.append("\"level\":\"").append("1").append("\",");
+				data.append("\"id\":\"").append(obj[0]).append("\",");
+				data.append("\"leaf\":").append(true).append(",");
+				data.append("\"name\":\"").append(obj[0]+"_"+obj[1]).append("\"");
+				data.append("},");
+			}
+		}else{//无查询条件
+			if(!StringUtil.isEmpty(groupid)&&!"null".equals(groupid)){//有自定义分组
+				if(StringUtil.isEmpty(node)){
+					data.append("{");
+					data.append("\"node\":\"").append("R0").append("\",");
+					data.append("\"parent\":\"").append("0").append("\",");
+					data.append("\"level\":\"").append("1").append("\",");
+					data.append("\"id\":\"").append("R0").append("\",");
+					data.append("\"leaf\":").append(false).append(",");
+					data.append("\"name\":\"").append("可选资产").append("\"");
+					data.append("},");
+				}else {
+					String groupid_temp = node.replace("R0_", "");
+					groupid_temp = groupid_temp.replaceAll("#0", "");
+					String [] groupidArr = groupid_temp.split("_");
+					if(!"R0".equals(node)){
+						int count_cp = Integer.parseInt(node.substring(node.lastIndexOf("#")+1,node.length()));
+						if(count_cp ==0){
+							sql.append("select '"+node+"_'||a.fgroupid as node,a.fgroupname as nodename,nvl(b.counts ,0) as counts,a.fparentid,a.flevel+2 as flevel,0 as isleaf from ts_defineassetgroup a left join (select fgroupid,count(1) as counts from ts_defineassetgroupr group by fgroupid) b on a.fgroupid=b.fgroupid ");
+							sql.append(" where a.frelation like '"+groupid_temp+"%' and  a.frelation<>'"+groupid_temp+"' and a.fparentid ='"+groupidArr[groupidArr.length-1]+"'");
+						}else{
+							String lastGroup = groupidArr[groupidArr.length-1];
+						
+							preSql.append("   and a.fsetcode in(select g.fsetcode from ts_defineassetgroupr g where g.fgroupid='"+lastGroup.substring(0, lastGroup.indexOf("#"))+"') order by to_number(a.fsetcode) asc");
+							List<Object[]> preList =  dao.findBySql(preSql.toString(), preParam);
+							for(Object[] obj:preList){
+								preMap.put(String.valueOf(obj[0]), String.valueOf(obj[1]));
+							}
+							if("R0_other#99".equals(node)){//未分组
+								sql.append("select a.fsetcode,a.fsetcode||'_'||a.fsetname as fsetname,0 as counts,'--' as fparentid,3 as flevel,1 as isleaf from tp_asset a ");
+								sql.append(" where a.fsetcode in(select frightid from ts_userright r where r.fuserid='"+fuserid+"' and r.fmoldid='"+roleid+"' and r.ftype=2) ");
+								sql.append(" and a.fsetcode not in(select fsetcode  from ts_defineassetgroupr where fgroupid in(select fgroupid from ts_defineassetgroup where frelation like '"+groupid+"%')) order by to_number(a.fsetcode) ");
+							}
+							else{
+								groupid = node.substring(node.lastIndexOf("_")+1,node.lastIndexOf("#"));
+								sql.append("select a.fsetcode,a.fsetcode||'_'||b.fsetname as nodename,0 as counts,'--'as fparentid,c.flevel,1 as isleaf from ts_defineassetgroupr a ");
+								sql.append(" left join tp_asset b on a.fsetcode = b.fsetcode ");
+								sql.append(" left join ts_defineassetgroup c on a.fgroupid = c.fgroupid ");
+								sql.append(" where a.fgroupid ='"+groupid+"' order by to_number(a.fsetcode) asc");
+							}
+						}
+					}else{
+						sql.append("select 'R0_'||a.fgroupid as node,a.fgroupname as nodename,nvl(b.counts ,0) as counts,a.fparentid,a.flevel+2 as flevel,0 as isleaf from ts_defineassetgroup a ");
+//						sql.append(" left join (select distinct '"+groupid+"' as fgroupid,count(1) as counts from ts_defineassetgroup where frelation like '"+groupid+"%') b on a.fgroupid=b.fgroupid where a.fgroupid='"+groupid+"'");
+						sql.append(" left join (select fgroupid,count(1) as counts from ts_defineassetgroupr group by fgroupid) b on a.fgroupid=b.fgroupid where a.fgroupid='"+groupid+"' ");
+					}
+					result = dao.findBySql(sql.toString(), new Object[]{});
+					for(Object[] obj:result){
+						if(!preMap.isEmpty()){
+							if(preMap.get(String.valueOf(obj[0]))!=null){
+								data.append("{");
+								data.append("\"node\":\"").append(obj[0]).append("\",");
+								data.append("\"parent\":\"").append(node).append("\",");
+								data.append("\"level\":\"").append(obj[4]).append("\",");
+								data.append("\"id\":\"").append(obj[0]).append("\",");
+								data.append("\"leaf\":").append("1".equals(String.valueOf(obj[5]))?true:false).append(",");
+								data.append("\"name\":\"").append(obj[1]).append("\"");
+								data.append("},");	
+								preMap.remove(obj[0]);
+							}							
+						}else{
+							int count = Integer.parseInt(String.valueOf(obj[2]));
+							data.append("{");
+							data.append("\"node\":\"").append(obj[0]+"#"+count).append("\",");
+							data.append("\"parent\":\"").append(node).append("\",");
+							data.append("\"level\":\"").append(obj[4]).append("\",");
+							data.append("\"id\":\"").append("1".equals(String.valueOf(obj[5]))?obj[0]:obj[0]+"#"+count).append("\",");
+							data.append("\"leaf\":").append("1".equals(String.valueOf(obj[5]))?true:false).append(",");
+							data.append("\"name\":\"").append(obj[1]).append("\"");
+							data.append("},");	
+						}
+					}
+					if("R0".equals(node)){
+						data.append("{");
+						data.append("\"node\":\"").append("R0_other#99").append("\",");
+						data.append("\"parent\":\"").append(node).append("\",");
+						data.append("\"level\":\"").append("2").append("\",");
+						data.append("\"id\":\"").append("R0_other#99").append("\",");
+						data.append("\"leaf\":").append(false).append(",");
+						data.append("\"name\":\"").append("未分组").append("\"");
+						data.append("},");	
+					}
+				}				
+			}else{//无自定义分组
+				//查询 tp_parameter 表
+				//没有系统默认采用“ftzfw_fjjlx”分组
+				String rulesql = "select  nvl(fvalue,'ftzfw_fjjlx') as fvalue  from tp_parameter where fname ='regulationTree'";
+				List<Object[]> rulelist = dao.findBySql(rulesql,new Object[]{});
+				String levelkey="ftzfw_fjjlx";
+				if(rulelist.size()>0){
+					levelkey =String.valueOf(rulelist.get(0)+"");//levelkey
+				}
+		
+				String[] ruleArray = levelkey.split("_");//套账树规则
+				/**
+				 * 拼装一部分的查询语句，主要是为了拼装树结构数据 以证券类型,投资范围
+				 * R0 第一级 {"node":"R0","parent":"0","level":"1","id":"R0","leaf":false,"name":"全部资产"}
+				 * R0#0 第二级
+				 * {"node":"R0#0","parent":"R0","level":"2","leaf":false,"id":"R0#0","name":"证券投资基金"},
+				 * {"node":"R0#26","parent":"R0","level":"2","leaf":false,"id":"R0#26","name":"基金子公司资产管理计划"}
+				 * R0#0#0 第三级
+				 * {"node":"R0#0#0","parent":"R0#0","level":"3","leaf":false,"id":"R0#0#0","name":"证券类"},
+				 * {"node":"R0#0#2","parent":"R0#0","level":"3","leaf":false,"id":"R0#0#2","name":"公募基金"}
+				 */
+				int levelCount = 0 ;
+				//点击下拉框 展开总节点[全部资产 id=R0]
+				if(StringUtil.isEmpty(node)){
+					levelkey = "'R0'";
+				}else{//展开其他层级[真正的查询开始]
+					//获取 点击 的节点[父节点的id]R0,R0#0
+					levelCount = node.split("#").length;//层级
+					int j = levelCount;
+					levelkey = "";
+					if(levelCount ==ruleArray.length+1){//层级与规则设置相同时，拼装时需要-1[全部资产也算一层]
+						j = levelCount-1;
+					}
+					//拼装真正要查询的规则字段
+					for(int i = 0;i<j;i++){
+						levelkey +=ruleArray[i]+",";	
+					}
+					levelkey  =levelkey.substring(0, levelkey.length()-1);
+				}
+				levelkey = levelkey.replaceAll(",", "||'#'||");
+				levelkey = levelkey.replace("fgroupname", "nvl(a.fgroupname,'--')");
+			
+				/** 按照套账树规则查询资产 **/
+			
+				sql.append("select  "+levelkey+" as levelkey,r.frightid,a.fassetid,a.fsetname,a.ftzfw,a.fjjglren,a.fjjlx,nvl(a.fgroupname,'--') as fgroupname,nvl(a.fgroupname,'--') as fgroupnametext,a.fjjzl,a.fjjzl2,a.fjjzl3,p.fpsetcode,p.fsetlevel,");
+				sql.append("(select fname from tp_codeinfo where fcode=to_char(a.ftzfw) and fparents=?) as ftzfwtext,");//投资范围
+				sql.append("(select fname from tp_codeinfo where fcode = to_char(a.fjjlx) and fparents = 'FJJLX') as fjjlxtext,");//证券类型
+				sql.append("(select fname from tp_codeinfo where fcode = to_char(a.fjjzl) and fparents = 'FJJZL_FJJLX_'||a.fjjlx) as fjjzltext,");//一级分类
+				sql.append(" (select fname from tp_codeinfo where fcode = to_char(a.fjjzl2) and fparents = 'FJJZL2_FJJLX_'||a.fjjzl) as fjjzl2text,");//二级分类
+				sql.append("(select fname from tp_codeinfo where fcode = to_char(a.fjjzl3) and fparents = 'FJJZL3_FJJLX_'||a.fjjzl2) as fjjzl3text,");//三级分类
+				sql.append("(select forgall from tp_orginfo where FORGCODE=a.fjjglren and ftype=?) as fjjglrentext ");//管理人
+				if(StringUtil.isEmpty(fuserid)||"null".equals(fuserid)){
+					sql.append(" from (select * from ts_userright  where ftype=? and fsh<>0 and frightid <> 0) r left join tp_asset a on r.frightid=a.fsetcode ");
+				}else{
+					sql.append(" from (select * from ts_userright  where fuserid='"+fuserid+"' and fmoldid='"+roleid+"' and ftype=? and fsh<>0 and frightid <> 0) r left join tp_asset a on r.frightid=a.fsetcode ");
+				}
+				
+				sql.append(" inner join tp_assetfinance p on a.fsetcode=p.fsetcode ");
+				if("3".equals(isShowDQ)||"4".equals(isShowDQ)||"0,3".equals(isShowDQ)||"1,3".equals(isShowDQ)||"1,4".equals(isShowDQ)||"0,4".equals(isShowDQ)){
+					sql.append(" inner join tp_accountseal s on a.fsetcode=s.fsetcode and s.fsh=1 ");		
+				}
+				sql.append(" where 1=1 ");
+				//资产树树参数
+				if("1".equals(isShowDQ)){
+					sql.append(" and a.fjjdqdate <= ? ");
+				}else if("0".equals(isShowDQ)){
+					sql.append(" and a.fjjdqdate > ? ");
+				}else if("3".equals(isShowDQ)){
+					sql.append(" and (s.faccsealdate > ? or s.faccsealdate is null)");
+				}else if("4".equals(isShowDQ)){
+					sql.append(" and s.faccsealdate <= ? ");
+				}else if("0,3".equals(isShowDQ)){
+					sql.append(" and a.fjjdqdate > ? and (s.faccsealdate > ? or s.faccsealdate is null) ");
+				}else if("0,4".equals(isShowDQ)){
+					sql.append(" and a.fjjdqdate > ? and s.faccsealdate <= ? ");
+				}else if("1,3".equals(isShowDQ)){
+					sql.append(" and a.fjjdqdate <= ? and (s.faccsealdate > ? or s.faccsealdate is null) ");
+				}else if("1,4".equals(isShowDQ)){
+					sql.append(" and a.fjjdqdate <= ? and s.faccsealdate <= ? ");
+				}
+				//SQL参数设置
+				Object[] queryParam = new Object[]{"FTZFW","0","2"};		
+				if("0".equals(isShowDQ)||"1".equals(isShowDQ)||"3".equals(isShowDQ)||"4".equals(isShowDQ)){	
+					queryParam = new Object[]{"FTZFW","0","2",DBUtil.toSqlDate(new Date())};
+				}else if("0,3".equals(isShowDQ)||"0,4".equals(isShowDQ)||"1,3".equals(isShowDQ)||"1,4".equals(isShowDQ)){
+					queryParam = new Object[]{"FTZFW","0","2",DBUtil.toSqlDate(new Date()),DBUtil.toSqlDate(new Date())};
+				}	
+				//排序
+				if(ruleArray.length == 1 && ruleArray[0].equals("frightid")){
+					sql.append(" order by ").append(DBUtil.sqlNumber("frightid"));
+				}else{
+					sql.append(" order by ");
+					for(int i = 0; i < ruleArray.length; i++){
+						sql.append("a."+ruleArray[i]).append(",");
+					}
+					sql.append(DBUtil.sqlNumber("frightid"));
+				}
+			
+				//当node 为空时代表下拉框是第一次展开,不必执行查询,直接返回
+				if(StringUtil.isEmpty(node)){
+					data.append("{");
+					data.append("\"node\":\"").append("R0").append("\",");
+					data.append("\"parent\":\"").append("0").append("\",");
+					data.append("\"level\":\"").append("1").append("\",");
+					data.append("\"id\":\"").append("R0").append("\",");
+					data.append("\"leaf\":").append(false).append(",");
+					data.append("\"name\":\"").append("可选资产").append("\"");
+					data.append("},");
+				}else{
+					//套账组选择为共用套账组
+					//不是根节点，需要进行查询
+					//重新为树的层级数赋值
+					levelCount = node.split("#").length;
+					StringBuffer str = new StringBuffer();
+					if(levelCount == ruleArray.length+1){//如果层级数=规则设置的指标个数+1(根节点),则表示为最明细,也就是叶子节点查询
+						 str.append("select distinct 'R0#'||levelkey||'#'||frightid as node,'"+node+"' as parents,'"+(levelCount+1)+"' as levelcount, 1 as leaf,  frightid as fsetcode,frightid||'_'||fsetname as fsetname,levelkey from ( "+sql.toString()+" ) where levelkey = ");
+						 str.append("'"+node.substring(3,node.length())+"'");
+						result = dao.findBySql(str.toString()+"order by to_number(fsetcode) asc", queryParam);
+					}else{//非明细
+						String textfield =ruleArray[levelCount-1]+"text";//节点中文名称
+						if(node.length()>2){//第2+级
+							str.append("select distinct 'R0#'||levelkey as node,'"+node+"' as parents,'"+(levelCount+1)+"' as levelcount, 0 as leaf,'R0#'||levelkey as fname,"+textfield+" ,levelkey from ( "+sql.toString()+" ) ");
+							str.append(" where levelkey like '"+node.substring(3,node.length())+"#%'");
+						}else{
+							str.append("select distinct '"+node+"#'||levelkey as node,'"+node+"' as parents,'"+(levelCount+1)+"' as levelcount, 0 as leaf,'"+node+"#'||levelkey as fname,"+textfield+",levelkey from ( "+sql.toString()+" ) ");
+						}
+						str.append(" order by levelkey ");
+						
+						result = dao.findBySql(str.toString(), queryParam);
+					}
+					for (Object [] obj : result) {
+						if(!String.valueOf(obj[0]).endsWith("#")){
+		    				data.append("{");
+		    				String nodeName = String.valueOf(obj[5]);
+		    				if("--".equals(nodeName)){
+		    					nodeName = "其他";
+		    				}
+		    				data.append("\"node\":\"").append(String.valueOf(obj[0])).append("\",");
+		    				data.append("\"parent\":\"").append(String.valueOf(obj[1])).append("\",");
+		    				data.append("\"level\":\"").append(String.valueOf(obj[2])).append("\",");
+		    				data.append("\"leaf\":").append(String.valueOf(obj[3]).equals("1")).append(",");
+		    				data.append("\"id\":\"").append(String.valueOf(obj[4])).append("\",");
+		    				data.append("\"name\":\"").append(nodeName).append("\"");
+		    				data.append("},");
+						}
+					}	
+				}
+			}
+		}
+		if(data.toString().endsWith(",")){
+			data.setLength(data.length() - 1);
+		}
+		data.append("]");
+		return data.toString();
+	}
+	
+	/**
+	 * 
+	 * 获取报表任务调度信息
+	 * @param params
+	 * @return
+	 * @author  Kris
+	 * @date    2016-5-12
+	 */
+	 public String getReportDataMsg(Map<String,String> params){
+		 Dao dao = this.getDao(Constants.FUNDREPORT_DATASOURCE_MAPPING);
+		 List<Object> args = new ArrayList<Object>();
+		 StringBuffer querySql = new StringBuffer();
+		 StringBuffer data = new StringBuffer();
+		 Map<String,String> assetMap = getAssetMap();
+		 querySql.append("select fsetcode,reportcode,reporttype,reportstart,");
+		 querySql.append(" reportend,flag,downtime,id ");
+		 querySql.append(" from td_bbzxmsg  where 1=?"); 
+		 args.add(params.get("search"));
+		 if(StringUtil.isNotEmpty(params.get("fsetcode"))){
+			StringBuffer temp = new StringBuffer(); 
+			String fsetcodes = params.get("fsetcode");
+			temp.append(" and ( ");
+			for(String fsetcode : fsetcodes.split(",")){
+				if(fsetcode.indexOf("R")>-1){
+					//选择的是根节点(全部资产),不错处理直接跳出循环
+					break;
+				}else if(fsetcode.indexOf("F")>-1){//一级投资范围(证券,非证券,公募)
+					String ftzfw = fsetcode.substring(1,fsetcode.length());
+					temp.append(" fsetcode in(select fsetcode from tp_asset where ftzfw=? ) or ");
+					args.add(ftzfw);
+				}else if(fsetcode.indexOf("S")>-1){//二级产品类型(证券投资基金,保险...等)
+					String ftzfw = fsetcode.substring(1,2);
+					String fjjlx = fsetcode.substring(2,fsetcode.length());
+					temp.append(" fsetcode in(select fsetcode from tp_asset where ftzfw=? and fjjlx=? ) or ");
+					args.add(ftzfw);
+					args.add(fjjlx);
+				}else{ 
+					temp.append(" fsetcode = ?  or ");
+					args.add(fsetcode);
+				}
+				
+			}
+			if(temp.indexOf("or")>-1){
+				temp.setLength(temp.lastIndexOf("or"));
+			}
+			temp.append(")");
+			querySql.append(temp.toString());
+		 }
+		 if(StringUtil.isNotEmpty(params.get("reportcode"))){
+			 querySql.append(" and reportcode like '"+params.get("reportcode")+"%' ");
+		 }
+		 if(StringUtil.isNotEmpty(params.get("reporttype"))){
+			 querySql.append(" and reporttype =? ");
+			 args.add(params.get("reporttype"));
+		 }
+		 if(StringUtil.isNotEmpty(params.get("reportstart"))){ 
+			 querySql.append(" and reportstart >=? ");
+			 args.add(params.get("reportstart"));
+		 }
+		 if(StringUtil.isNotEmpty(params.get("reportend"))){ 
+			 querySql.append(" and reportstart <=? ");
+			 args.add(params.get("reportend"));
+		 }
+		 if(StringUtil.isNotEmpty(params.get("flag"))){ 
+			 querySql.append(" and flag =? ");
+			 args.add(params.get("flag"));
+		 }
+		 querySql.append(" order by downtime");
+		 List<Object[]> result = dao.findBySql(querySql.toString(), args.toArray());
+			data.append("{\"total\":" + result.size() + ",\"data\":");
+			data.append("[");
+			if(result.size()>0){
+				for (Object [] obj : result) {
+					String fsetname = assetMap.get(String.valueOf(obj[0]));
+					data.append("{");
+					data.append("\"fsetcode\":\"").append(String.valueOf(obj[0])).append("\",");//套账号
+					data.append("\"fsetname\":\"").append(fsetname).append("\",");//套账名称
+					data.append("\"fsetname_\":\"").append(String.valueOf(obj[0])+"_"+fsetname).append("\",");//套账名称
+					data.append("\"reportcode\":\"").append(String.valueOf(obj[1])).append("\",");//报表编号
+					data.append("\"reporttype\":\"").append(String.valueOf(obj[2])).append("\",");//期间类型
+					data.append("\"reportstart\":\"").append(String.valueOf(obj[3])).append("\",");//开始时间
+					data.append("\"reportend\":\"").append(String.valueOf(obj[4])).append("\",");//开始时间
+					data.append("\"flag\":\"").append(String.valueOf(obj[5])).append("\",");//执行成功标志
+					data.append("\"downtime\":\"").append(String.valueOf(obj[6])).append("\",");//落地时间
+					data.append("\"id\":\"").append(String.valueOf(obj[7])).append("\"");//id
+					data.append("},");
+				}
+			data.setLength(data.length() - 1);
+			}	
+			data.append("]}");
+			return data.toString();
+	 }
+	 /**
+	  *核算套账号_套账名称 对应map
+	  * @return
+	  * @author  Kris
+	  * @date    2016-5-16
+	  */
+	 public Map<String,String> getAssetMap(){
+			//指定数据源
+			Dao dao = null;
+			if(StringUtil.isNotEmpty(this.getDataSource())&&this.getDataSource().equals(Constants.FUND_OTHER_DATASOURCE_ID)){
+				dao = this.getDao(Constants.FUND_OTHER_DATASOURCE_MAPPING);
+			}else{
+				dao = this.getDao(Constants.FUND_DATASOURCE_MAPPING);
+			}
+			Map<String,String> assetMap = new HashMap<String, String>();
+			List<Object[]> result = dao.findBySql("select fsetcode,fsetname from tp_asset where fsh=1",new Object[]{});
+			for (Object [] obj : result) {
+				assetMap.put(String.valueOf(obj[0]), String.valueOf(obj[1]));
+			}
+			return assetMap;
+		}
+	public String getShowDQ(String userid){
+		//指定数据源
+		Dao dao = null;
+		if(StringUtil.isNotEmpty(this.getDataSource())&&this.getDataSource().equals(Constants.FUND_OTHER_DATASOURCE_ID)){
+			dao = this.getDao(Constants.FUND_OTHER_DATASOURCE_MAPPING);
+		}else{
+			dao = this.getDao(Constants.FUND_DATASOURCE_MAPPING);
+		}		String isShowDQ = "";
+		String bz = "";
+		String sql = "select fvalue from tp_parameter where fname = (select fusername||'_资产树是否显示到期' from ts_user where fuserid =?)";
+		List<Object[]> result = dao.findBySql(sql.toString(), new Object[]{userid});
+		if(result==null||result.isEmpty()){
+			isShowDQ =  "";
+		}else{
+			isShowDQ = String.valueOf(result.get(0));
+		}	
+		if(isShowDQ.equals("未到期")){
+			bz = "0";
+		}else if(isShowDQ.equals("已到期")){
+			bz = "1";
+		}else if(isShowDQ.equals("未封账")){
+			bz = "3";
+		}else if(isShowDQ.equals("已封账")){
+			bz = "4";
+		}else if(isShowDQ.equals("未到期_未封账")){
+			bz = "0,3";
+		}else if(isShowDQ.equals("未到期_已封账")){
+			bz = "0,4";
+		}else if(isShowDQ.equals("已到期_未封账")){
+			bz = "1,3";
+		}else if(isShowDQ.equals("已到期_已封账")){
+			bz = "1,4";
+		}else {
+			bz = "2";
+		}
+		return bz;
+	}
+	
+	
+	
+	
+	
+	
+	/**
+	 * 页面异步套账树多选返回真正的节点
+	 * 方法详细说明，包括用途、注意事项、举例说明等。
+	 * @param node
+	 * @param params
+	 * @return
+	 * @author  Kris
+	 * @date    2017-1-9
+	 */
+	public List getRealCodes(String node,List<Object>params){		
+		if(node.indexOf("R")==-1){
+			return null;
+		}
+		//指定数据源
+		Dao dao = null;
+		if(StringUtil.isNotEmpty(this.getDataSource())&&this.getDataSource().equals(Constants.FUND_OTHER_DATASOURCE_ID)){
+			dao = this.getDao(Constants.FUND_OTHER_DATASOURCE_MAPPING);
+		}else{
+			dao = this.getDao(Constants.FUND_DATASOURCE_MAPPING);
+		}		/** 查询套账树设置规则 
+		 * ftzfw-投资范围,fjjglren-管理人,fgroupname-套账树
+		 * fjjlx-证券类型,fjjzl-一级分类,fjjzl2-二级分类,fjjzl3-三级分类
+		 * **/
+		String fuserid ="";//用户代码 userId
+		String roleid = "";//角色代码 roleId
+		String groupid ="";//分组Id groupId
+		String isShowDQ = getShowDQ("");//是否显示到期等配置
+		List<Object[]> result = new ArrayList<Object[]>();
+		if(params!=null){
+		 fuserid =String.valueOf(params.get(0));//用户代码 userId
+		 roleid = String.valueOf(params.get(1));//角色代码 roleId
+		 groupid =String.valueOf(params.get(2));//分组Id groupId
+		 isShowDQ = getShowDQ(fuserid);//是否显示到期等配置
+		}
+		
+		StringBuffer sql = new StringBuffer();
+		StringBuffer preSql = new StringBuffer();
+		Map<String, String> preMap = new HashMap<String, String>();	
+		List<String> dataList = new ArrayList<String>();	
+		preSql.append("select a.fsetcode,a.fsetname from tp_asset a ");
+//		sql.append(" inner join tp_assetfinance p on a.fsetcode=p.fsetcode ");
+//		if("3".equals(isShowDQ)||"4".equals(isShowDQ)||"0,3".equals(isShowDQ)||"1,3".equals(isShowDQ)||"1,4".equals(isShowDQ)||"0,4".equals(isShowDQ)){
+//			sql.append(" inner join tp_accountseal s on a.fsetcode=s.fsetcode and s.fsh=1 ");		
+//		}
+		preSql.append(" where 1=1 ");
+		if(StringUtil.isEmpty(fuserid)||"null".equals(fuserid)){
+			preSql.append(" and a.fsetcode in(select frightid from ts_userright r where r.ftype=2)  and a.fsh = 1");
+		}else{
+			preSql.append(" and a.fsetcode in(select frightid from ts_userright r where r.fuserid='"+fuserid+"' and r.fmoldid='"+roleid+"' and r.ftype=2)  and a.fsh = 1");
+		}
+		
+		
+		if("1".equals(isShowDQ)){
+			preSql.append(" and a.fjjdqdate <= ? ");
+		}else if("0".equals(isShowDQ)){
+			preSql.append(" and a.fjjdqdate > ? ");
+		}else if("3".equals(isShowDQ)){
+			preSql.append(" and (s.faccsealdate > ? or s.faccsealdate is null)");
+		}else if("4".equals(isShowDQ)){
+			preSql.append(" and s.faccsealdate <= ? ");
+		}else if("0,3".equals(isShowDQ)){
+			preSql.append(" and a.fjjdqdate > ? and (s.faccsealdate > ? or s.faccsealdate is null) ");
+		}else if("0,4".equals(isShowDQ)){
+			preSql.append(" and a.fjjdqdate > ? and s.faccsealdate <= ? ");
+		}else if("1,3".equals(isShowDQ)){
+			preSql.append(" and a.fjjdqdate <= ? and (s.faccsealdate > ? or s.faccsealdate is null) ");
+		}else if("1,4".equals(isShowDQ)){
+			preSql.append(" and a.fjjdqdate <= ? and s.faccsealdate <= ? ");
+		}
+		Object[] preParam = new Object[]{};		
+		if("0".equals(isShowDQ)||"1".equals(isShowDQ)||"3".equals(isShowDQ)||"4".equals(isShowDQ)){	
+			preParam = new Object[]{DBUtil.toSqlDate(new Date())};
+		}else if("0,3".equals(isShowDQ)||"0,4".equals(isShowDQ)||"1,3".equals(isShowDQ)||"1,4".equals(isShowDQ)){
+			preParam = new Object[]{DBUtil.toSqlDate(new Date()),DBUtil.toSqlDate(new Date())};
+		}
+
+			if(!StringUtil.isEmpty(groupid)&&!"null".equals(groupid)){//有自定义分组
+				if(!StringUtil.isEmpty(node)) {
+					if(!"R0".equals(node)){
+						int count_cp = Integer.parseInt(node.substring(node.lastIndexOf("#")+1,node.length()));
+						if(count_cp ==0&&node.lastIndexOf("_")<3){
+							sql.append("select '"+node+"_'||a.fgroupid as node,a.fgroupname as nodename,nvl(b.counts ,0) as counts,a.fparentid,a.flevel+2 as flevel,0 as isleaf from ts_defineassetgroup a left join (select fgroupid,count(1) as counts from ts_defineassetgroupr group by fgroupid) b on a.fgroupid=b.fgroupid where a.fparentid='"+groupid+"'");
+						}else{
+							List<Object[]> preList =  dao.findBySql(preSql.toString(), preParam);
+							for(Object[] obj:preList){
+								preMap.put(String.valueOf(obj[0]), String.valueOf(obj[1]));
+							}
+							if("R0_other#99".equals(node)){//未分组
+								sql.append("select a.fsetcode,a.fsetcode||'_'||a.fsetname as fsetname,0 as counts,'--' as fparentid,3 as flevel,1 as isleaf from tp_asset a ");
+								sql.append(" where a.fsetcode in(select frightid from ts_userright r where r.fuserid='"+fuserid+"' and r.fmoldid='"+roleid+"' and r.ftype=2) ");
+								sql.append(" and a.fsetcode not in(select fsetcode  from ts_defineassetgroupr where fgroupid in(select fgroupid from ts_defineassetgroup where frelation like '"+groupid+"%')) ");
+							}
+							else{
+								groupid = node.substring(node.lastIndexOf("_")+1,node.lastIndexOf("#"));
+								sql.append("select a.fsetcode,a.fsetcode||'_'||b.fsetname as nodename,0 as counts,'--'as fparentid,c.flevel,1 as isleaf from ts_defineassetgroupr a ");
+								sql.append(" left join tp_asset b on a.fsetcode = b.fsetcode ");
+								sql.append(" left join ts_defineassetgroup c on a.fgroupid = c.fgroupid ");
+								sql.append(" where a.fgroupid ='"+groupid+"'");
+							}
+						}
+					}else{
+						sql.append("select 'R0_'||a.fgroupid as node,a.fgroupname as nodename,nvl(b.counts ,0) as counts,a.fparentid,a.flevel+2 as flevel,0 as isleaf from ts_defineassetgroup a ");
+						sql.append(" left join (select fgroupid,count(1) as counts from ts_defineassetgroupr group by fgroupid) b on a.fgroupid=b.fgroupid where a.fgroupid='"+groupid+"'");
+					}
+					result = dao.findBySql(sql.toString(), new Object[]{});
+					for(Object[] obj:result){
+						if(!preMap.isEmpty()){
+							if(preMap.get(String.valueOf(obj[0]))!=null){
+								dataList.add(String.valueOf(obj[0]));	
+								preMap.remove(obj[0]);
+							}							
+						}else{
+							int count = Integer.parseInt(String.valueOf(obj[2]));	
+							dataList.add("1".equals(String.valueOf(obj[5]))?String.valueOf(obj[0]):obj[0]+"#"+count);
+						}
+					}
+					if("R0".equals(node)){
+						dataList.add("R0_other#99");	
+					}
+				}
+				List<String> dataList_temp = new ArrayList<String>();	
+				for(String gnode:dataList){
+					if(gnode.indexOf("R")>-1){
+						dataList_temp.remove(gnode);
+						dataList_temp.addAll(getRealCodes(gnode,params));
+					}else{
+						dataList_temp.add(gnode);
+					}
+				}
+				
+				return dataList_temp;				
+			}else{//无自定义分组
+				//查询 tp_parameter 表
+				//没有系统默认采用“ftzfw_fjjlx”分组
+				String rulesql = "select nvl(fvalue,'ftzfw_fjjlx') as fvalue  from tp_parameter where fname ='regulationTree'";
+				List<Object[]> rulelist = dao.findBySql(rulesql,new Object[]{});
+				String levelkey="ftzfw_fjjlx";
+				if(rulelist.size()>0){
+					levelkey =String.valueOf(rulelist.get(0)+"");//levelkey
+				}
+				String[] ruleArray = levelkey.split("_");//套账树规则
+				/**
+				 * 拼装一部分的查询语句，主要是为了拼装树结构数据 以证券类型,投资范围
+				 * R0 第一级 {"node":"R0","parent":"0","level":"1","id":"R0","leaf":false,"name":"全部资产"}
+				 * R0#0 第二级
+				 * {"node":"R0#0","parent":"R0","level":"2","leaf":false,"id":"R0#0","name":"证券投资基金"},
+				 * {"node":"R0#26","parent":"R0","level":"2","leaf":false,"id":"R0#26","name":"基金子公司资产管理计划"}
+				 * R0#0#0 第三级
+				 * {"node":"R0#0#0","parent":"R0#0","level":"3","leaf":false,"id":"R0#0#0","name":"证券类"},
+				 * {"node":"R0#0#2","parent":"R0#0","level":"3","leaf":false,"id":"R0#0#2","name":"公募基金"}
+				 */
+				int levelCount = 0 ;
+				//点击下拉框 展开总节点[全部资产 id=R0]
+				if(StringUtil.isEmpty(node)){
+					levelkey = "'R0'";
+				}else{//展开其他层级[真正的查询开始]
+					//获取 点击 的节点[父节点的id]R0,R0#0
+					levelCount = node.split("#").length;//层级
+					int j = levelCount;
+					levelkey = "";
+					if(levelCount ==ruleArray.length+1){//层级与规则设置相同时，拼装时需要-1[全部资产也算一层]
+						j = levelCount-1;
+					}
+					//拼装真正要查询的规则字段
+					for(int i = 0;i<j;i++){
+						levelkey +=ruleArray[i]+",";	
+					}
+					levelkey  =levelkey.substring(0, levelkey.length()-1);
+				}
+				levelkey = levelkey.replaceAll(",", "||'#'||");
+				levelkey = levelkey.replace("fgroupname", "nvl(a.fgroupname,'--')");
+			
+				/** 按照套账树规则查询资产 **/
+			
+				sql.append("select  "+levelkey+" as levelkey,r.frightid,a.fassetid,a.fsetname,a.ftzfw,a.fjjglren,a.fjjlx,nvl(a.fgroupname,'--') as fgroupname,nvl(a.fgroupname,'--') as fgroupnametext,a.fjjzl,a.fjjzl2,a.fjjzl3,p.fpsetcode,p.fsetlevel,");
+				sql.append("(select fname from tp_codeinfo where fcode=to_char(a.ftzfw) and fparents=?) as ftzfwtext,");//投资范围
+				sql.append("(select fname from tp_codeinfo where fcode = to_char(a.fjjlx) and fparents = 'FJJLX') as fjjlxtext,");//证券类型
+				sql.append("(select fname from tp_codeinfo where fcode = to_char(a.fjjzl) and fparents = 'FJJZL_FJJLX_'||a.fjjlx) as fjjzltext,");//一级分类
+				sql.append(" (select fname from tp_codeinfo where fcode = to_char(a.fjjzl2) and fparents = 'FJJZL2_FJJLX_'||a.fjjzl) as fjjzl2text,");//二级分类
+				sql.append("(select fname from tp_codeinfo where fcode = to_char(a.fjjzl3) and fparents = 'FJJZL3_FJJLX_'||a.fjjzl2) as fjjzl3text,");//三级分类
+				sql.append("(select forgall from tp_orginfo where FORGCODE=a.fjjglren and ftype=?) as fjjglrentext ");//管理人
+				if(StringUtil.isEmpty(fuserid)||"null".equals(fuserid)){
+					sql.append(" from (select * from ts_userright  where ftype=? and fsh<>0 and frightid <> 0) r left join tp_asset a on r.frightid=a.fsetcode ");
+				}else{
+					sql.append(" from (select * from ts_userright  where fuserid='"+fuserid+"' and fmoldid='"+roleid+"' and ftype=? and fsh<>0 and frightid <> 0) r left join tp_asset a on r.frightid=a.fsetcode ");
+				}
+				
+				sql.append(" inner join tp_assetfinance p on r.frightid=p.fsetcode ");
+				if("3".equals(isShowDQ)||"4".equals(isShowDQ)||"0,3".equals(isShowDQ)||"1,3".equals(isShowDQ)||"1,4".equals(isShowDQ)||"0,4".equals(isShowDQ)){
+					sql.append(" inner join tp_accountseal s on r.frightid=s.fsetcode and s.fsh=1 ");		
+				}
+				sql.append(" where 1=1 ");
+				//资产树树参数
+				if("1".equals(isShowDQ)){
+					sql.append(" and a.fjjdqdate <= ? ");
+				}else if("0".equals(isShowDQ)){
+					sql.append(" and a.fjjdqdate > ? ");
+				}else if("3".equals(isShowDQ)){
+					sql.append(" and (s.faccsealdate > ? or s.faccsealdate is null)");
+				}else if("4".equals(isShowDQ)){
+					sql.append(" and s.faccsealdate <= ? ");
+				}else if("0,3".equals(isShowDQ)){
+					sql.append(" and a.fjjdqdate > ? and (s.faccsealdate > ? or s.faccsealdate is null) ");
+				}else if("0,4".equals(isShowDQ)){
+					sql.append(" and a.fjjdqdate > ? and s.faccsealdate <= ? ");
+				}else if("1,3".equals(isShowDQ)){
+					sql.append(" and a.fjjdqdate <= ? and (s.faccsealdate > ? or s.faccsealdate is null) ");
+				}else if("1,4".equals(isShowDQ)){
+					sql.append(" and a.fjjdqdate <= ? and s.faccsealdate <= ? ");
+				}
+				//SQL参数设置
+				Object[] queryParam = new Object[]{"FTZFW","0","2"};		
+				if("0".equals(isShowDQ)||"1".equals(isShowDQ)||"3".equals(isShowDQ)||"4".equals(isShowDQ)){	
+					queryParam = new Object[]{"FTZFW","0","2",DBUtil.toSqlDate(new Date())};
+				}else if("0,3".equals(isShowDQ)||"0,4".equals(isShowDQ)||"1,3".equals(isShowDQ)||"1,4".equals(isShowDQ)){
+					queryParam = new Object[]{"FTZFW","0","2",DBUtil.toSqlDate(new Date()),DBUtil.toSqlDate(new Date())};
+				}	
+				//排序
+				if(ruleArray.length == 1 && ruleArray[0].equals("frightid")){
+					sql.append(" order by ").append(DBUtil.sqlNumber("frightid"));
+				}else{
+					sql.append(" order by ");
+					for(int i = 0; i < ruleArray.length; i++){
+						sql.append("a."+ruleArray[i]).append(",");
+					}
+					sql.append(DBUtil.sqlNumber("frightid"));
+				}
+					//套账组选择为共用套账组
+					//不是根节点，需要进行查询
+					//重新为树的层级数赋值
+					levelCount = node.split("#").length;
+					StringBuffer str = new StringBuffer();
+					if(levelCount == ruleArray.length+1){//如果层级数=规则设置的指标个数+1(根节点),则表示为最明细,也就是叶子节点查询
+						 str.append("select distinct 'R0#'||levelkey||'#'||frightid as node,'"+node+"' as parents,'"+(levelCount+1)+"' as levelcount, 1 as leaf,  frightid as fsetcode,frightid||'_'||fsetname as fsetname,levelkey from ( "+sql.toString()+" ) where levelkey = ");
+						 str.append("'"+node.substring(3,node.length())+"'");
+						result = dao.findBySql(str.toString()+"order by to_number(fsetcode)", queryParam);
+					}else{//非明细
+						String textfield =ruleArray[levelCount-1]+"text";//节点中文名称
+						if(node.length()>2){//第2+级
+							str.append("select distinct 'R0#'||levelkey as node,'"+node+"' as parents,'"+(levelCount+1)+"' as levelcount, 0 as leaf,'R0#'||levelkey as fname,"+textfield+" ,levelkey from ( "+sql.toString()+" ) ");
+							str.append(" where levelkey like '"+node.substring(3,node.length())+"#%'");
+						}else{
+							str.append("select distinct '"+node+"#'||levelkey as node,'"+node+"' as parents,'"+(levelCount+1)+"' as levelcount, 0 as leaf,'"+node+"#'||levelkey as fname,"+textfield+",levelkey from ( "+sql.toString()+" ) ");
+						}
+						str.append(" order by levelkey ");
+						
+						result = dao.findBySql(str.toString(), queryParam);
+					}
+					for (Object [] obj : result) {
+						if(String.valueOf(obj[4]).endsWith("#")||String.valueOf(obj[4]).indexOf("R")>-1){
+							dataList.addAll(getRealCodes(String.valueOf(obj[4]),params));
+						}else{
+							dataList.add(String.valueOf(obj[4]));
+						}
+					}
+					return dataList;
+			}	
+		
+	}
+	
+	public String getKjkm(String keyword,String fsetcode,String fkmlb) throws Exception{
+		//指定数据源
+		Dao dao = null;
+		if(StringUtil.isNotEmpty(this.getDataSource())&&this.getDataSource().equals(Constants.FUND_OTHER_DATASOURCE_ID)){
+			dao = this.getDao(Constants.FUND_OTHER_DATASOURCE_MAPPING);
+		}else{
+			dao = this.getDao(Constants.FUND_DATASOURCE_MAPPING);
+		}		List<Object[]> result = new ArrayList<Object[]>();
+		StringBuffer data = new StringBuffer();
+		StringBuffer sql = new StringBuffer();
+		StringBuffer facctcodestr = new StringBuffer();//科目号
+		String fsetcodestr = "" ;//套账号
+		StringBuffer fkmlbstr = new StringBuffer();//科目类别
+		if(("").equals(fsetcode) || fsetcode==null){
+			fsetcodestr=" 1=1 ";
+		}else{
+			String[] fsetcodelist = fsetcode.split(",");
+			for(int m = 0;m<fsetcodelist.length;m++){
+				fsetcodestr+="fsetcode = "+fsetcodelist[m]+" or ";
+			}
+			fsetcodestr = fsetcodestr.substring(0, fsetcodestr.length()-3);
+		}
+		if(("").equals(fkmlb) || fkmlb==null || fkmlb.equals("全部")){
+			fkmlbstr.append(" and 1=1 ");
+		}else{
+			fkmlbstr.append(" and facctclass = '").append(fkmlb).append("'");
+		}
+		if(StringUtil.isEmpty(keyword)){
+			facctcodestr.append(" where 1=1 ");
+		}else{
+			facctcodestr.append(" where (facctcode like '").append("%"+keyword+"%' or facctname like '%"+keyword+"%')");
+		}
+		data.append("[");
+		sql.append(" select  distinct(facctcode),facctname from tf_accountsubject ").append(facctcodestr).append(" and (").append(fsetcodestr).append(")").append(fkmlbstr).append(" order by facctcode ");
+		result = dao.findBySql(sql.toString(), new Object[]{});
+		for(Object[] obj:result ){
+			data.append("{ ");
+			data.append("\"id\":\"").append(obj[0]+"_"+obj[1]).append("\",");
+			data.append("\"name\":\"").append(obj[0]+"_"+obj[1]).append("\"");
+			data.append("},");
+		}
+		if(data.toString().endsWith(",")){
+			data.setLength(data.length()-1);
+		}
+		data.append("]");
+		return data.toString();
+	}
+	
+	
+	
+}

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wc-entries
+   xmlns="svn:">
+<entry
+   repos="http://192.168.100.238/svn/acssvn"
+   name=""
+   revision="310291"
+   last-author="zhangxiaorui"
+   url="http://192.168.100.238/svn/acssvn/Trunk/SourceCode/21GZ3.5/report20/com.yss.acs.fundreport/src/main/java/com/yss/acs/fundreport/controller"
+   uuid="a366b9f8-ae6c-4d04-a85b-0020d49e262e"
+   committed-rev="288062"
+   kind="dir"
+   committed-date="2018-01-31T11:15:41.145643Z"/>
+<entry
+   name="ReportDataMsgController.java"
+   checksum="2c2dc6b753744745c2d566b4fe461331"
+   last-author="zhangxiaorui"
+   committed-rev="288062"
+   text-time="2018-01-31T11:15:41.145000Z"
+   kind="file"
+   committed-date="2018-01-31T11:15:41.145643Z"/>
+</wc-entries>

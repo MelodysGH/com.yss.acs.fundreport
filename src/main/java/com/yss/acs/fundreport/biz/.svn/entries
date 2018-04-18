@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wc-entries
+   xmlns="svn:">
+<entry
+   repos="http://192.168.100.238/svn/acssvn"
+   name=""
+   revision="310291"
+   last-author="zhangxiaorui"
+   url="http://192.168.100.238/svn/acssvn/Trunk/SourceCode/21GZ3.5/report20/com.yss.acs.fundreport/src/main/java/com/yss/acs/fundreport/biz"
+   uuid="a366b9f8-ae6c-4d04-a85b-0020d49e262e"
+   committed-rev="298914"
+   kind="dir"
+   committed-date="2018-03-12T07:39:11.216098Z"/>
+<entry
+   name="ReportDataBO.java"
+   checksum="f9a3ba9a5294344517bddf5ad8595a0a"
+   last-author="zhangxiaorui"
+   committed-rev="298656"
+   text-time="2018-03-12T02:16:00.215000Z"
+   kind="file"
+   committed-date="2018-03-12T02:16:00.215386Z"/>
+<entry
+   name="ReportDataMsgBO.java"
+   checksum="d30568ecb322bd186abf7559d49f81df"
+   last-author="zhangxiaorui"
+   committed-rev="298914"
+   text-time="2018-03-12T07:39:11.216000Z"
+   kind="file"
+   committed-date="2018-03-12T07:39:11.216098Z"/>
+<entry
+   name="ReportReadThread.java"
+   checksum="f9e6c68d103e9f88b243f6847f7b32d2"
+   last-author="zhangxiaorui"
+   committed-rev="269489"
+   text-time="2017-12-05T02:31:41.187000Z"
+   kind="file"
+   committed-date="2017-12-05T02:31:41.187704Z"/>
+</wc-entries>
