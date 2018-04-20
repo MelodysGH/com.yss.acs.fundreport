@@ -4,13 +4,19 @@
     "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping package="com.yss.acs.fundreport.vo">
-	<class name="TaskNodesManage" table="T_TEST" dynamic-update="false"
+	<class name="ProductModeManage" table="t_mc_productModeManage" dynamic-update="false"
 		dynamic-insert="true">
 		<!-- BasalVO -->
-		<id name="fid" type="string">
-			<column name="FID" precision="20" scale="0" />
-			<generator class="com.yss.sofa.framework.id.hibernate.HibNUIDGenerator" />
+		<id name="id" type="java.lang.String">
+            <column name="FID" />
+            <!-- 采用framework中的NUID生成器自动生成20为的数组id -->
+            <generator class="com.yss.sofa.framework.id.hibernate.HibNUIDGenerator" />
 		</id>
+<!--  
+		<property name="fid" type="string">
+			<column name="FCODE" />
+		</property>
+-->
 
 		<property name="fcode" type="string">
 			<column name="FCODE" />
@@ -20,20 +26,20 @@
 			<column name="FNAME" />
 		</property>
 
-		<property name="finitflag" type="integer">
-			<column name="FINTFLAG" />
+		<property name="finitFlag" type="integer">
+			<column name="FINT_FLAG" />
 		</property>
 
-		<property name="fjstype" type="string">
-			<column name="FJSTYPE" />
+		<property name="fjsType" type="string">
+			<column name="FJS_TYPE" />
 		</property>
 
-		<property name="fpydays" type="integer">
-			<column name="FPYDAYS" />
+		<property name="fpyDays" type="integer">
+			<column name="FPY_DAYS" />
 		</property>
 
-		<property name="ftwiceval" type="integer">
-			<column name="FTWICEVAL" />
+		<property name="ftwiceVal" type="integer">
+			<column name="FTWICE_VAL" />
 		</property>
 
 		<property name="fsetcode" type="integer">

@@ -14,14 +14,15 @@
     http://www.springframework.org/schema/tx 
     http://www.springframework.org/schema/tx/spring-tx.xsd">
 
+	<!-- 数据源工厂 -->
+	<osgi:reference id="dataSourceFactoryBean" bean-name="dataSourceFactoryBean"
+		interface="com.yss.sofa.framework.datasource.DataSourceFactory" />
+
 	<!-- hibernate的相关配置代理 -->
 	<bean id="HibernateConfigBean"
 		class="com.yss.sofa.framework.dao.hibernate.HibernateConfigBean">
 		<constructor-arg value="acs-clearing" />
 	</bean>
-	<!-- 数据源工厂 -->
-	<osgi:reference id="dataSourceFactoryBean" bean-name="dataSourceFactoryBean"
-		interface="com.yss.sofa.framework.datasource.DataSourceFactory" />
 
 	<!-- 直连数据库导入指令数据源 -->
 	<bean id="fundReportDataSource"
@@ -32,6 +33,13 @@
 				<property name="dataSourceFactory" ref="dataSourceFactoryBean" />
 			</bean>
 		</property>
+
+		<property name="mappingLocations">
+			<list>
+				<value>classpath:/com/yss/acs/parameter/**/vo/*.hbm.xml</value>
+			</list>
+		</property>
+		
 		<property name="hibernateProperties" ref="HibernateConfigBean"></property>
 	</bean>
 	<bean id="fundDataSource"
@@ -54,4 +62,23 @@
 		</property>
 		<property name="hibernateProperties" ref="HibernateConfigBean"></property>
 	</bean>
+	<!-- AOP使用 -->
+	<aop:aspectj-autoproxy proxy-target-class="true" />
+	<bean id="SOFAInterceptor" class="com.yss.sofa.framework.interceptor.SOFAInterceptor" />
+
+	<bean class="com.yss.sofa.framework.web.util.ApplicationContextTransmitter" />
+
+	<bean id="txManager"
+		class="com.yss.sofa.framework.datasource.TransactionManagerBean" />
+	<tx:annotation-driven transaction-manager="txManager" />
+
+	<!-- 强制使用CGLIB代理 -->
+	<aop:aspectj-autoproxy proxy-target-class="true" />
+	
+	<!-- 通用拦截器 -->
+	<bean class="com.yss.sofa.framework.interceptor.SOFAInterceptor" />
+
+	<!-- 异常解析器 -->
+	<bean class="com.yss.sofa.framework.exception.ExceptionResolver" />
+	
 </beans>

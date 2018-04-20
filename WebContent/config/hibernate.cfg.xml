@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+		"-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+		"http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd">
+<hibernate-configuration>
+    <session-factory>
+    	<!-- 数据库驱动 -->
+    	<property name="connection.driver_class">oracle.jdbc.driver.OracleDriver</property>  
+        <!-- 数据库名称 -->  
+        <property name="hibernate.connection.url">jdbc:oracle:thin://127.0.0.1:1521/yssorcl</property>  
+        <!-- 数据库的登陆用户名 -->  
+        <property name="hibernate.connection.username">report</property>  
+        <!-- 数据库的登陆密码 -->  
+        <property name="hibernate.connection.password">report</property>  
+        <!-- 方言：为每一种数据库提供适配器，方便转换 -->  
+        <property name="dialect">org.hibernate.dialect.Oracle11gDialect</property>  
+          
+        <span style="color:#ff0000;"><mapping resource="src/main/java/com.yss.acs.fundreport.vo/ProductModeManage.hbm.xml"/></span>  
+    
+    </session-factory>
+</hibernate-configuration>
