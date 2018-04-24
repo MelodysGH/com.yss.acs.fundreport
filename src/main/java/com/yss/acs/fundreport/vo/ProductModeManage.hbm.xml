@@ -3,8 +3,8 @@
     "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
     "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
 
-<hibernate-mapping package="com.yss.acs.fundreport.vo">
-	<class name="ProductModeManage" table="t_mc_productModeManage" dynamic-update="false"
+<hibernate-mapping>
+	<class name="com.yss.acs.fundreport.vo.ProductModeManage" table="t_mc_productModeManage" dynamic-update="false"
 		dynamic-insert="true">
 		<!-- BasalVO -->
 		<id name="id" type="java.lang.String">
@@ -12,11 +12,6 @@
             <!-- 采用framework中的NUID生成器自动生成20为的数组id -->
             <generator class="com.yss.sofa.framework.id.hibernate.HibNUIDGenerator" />
 		</id>
-<!--  
-		<property name="fid" type="string">
-			<column name="FCODE" />
-		</property>
--->
 
 		<property name="fcode" type="string">
 			<column name="FCODE" />
@@ -43,7 +38,7 @@
 		</property>
 
 		<property name="fsetcode" type="integer">
-			<column name="FETCODE" />
+			<column name="FSETCODE" />
 		</property>
 	</class>
 </hibernate-mapping>

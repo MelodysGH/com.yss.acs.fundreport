@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
-	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:osgi="http://www.springframework.org/schema/osgi"
-	xmlns:tx="http://www.springframework.org/schema/tx" xmlns:context="http://www.springframework.org/schema/context"
-	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+ xmlns:p="http://www.springframework.org/schema/p"
+ xmlns:aop="http://www.springframework.org/schema/aop" 
+ xmlns:osgi="http://www.springframework.org/schema/osgi"
+ xmlns:tx="http://www.springframework.org/schema/tx" 
+ xmlns:context="http://www.springframework.org/schema/context"
+ xsi:schemaLocation="http://www.springframework.org/schema/beans 
     http://www.springframework.org/schema/beans/spring-beans.xsd
     http://www.springframework.org/schema/aop 
     http://www.springframework.org/schema/aop/spring-aop.xsd 
@@ -14,71 +17,60 @@
     http://www.springframework.org/schema/tx 
     http://www.springframework.org/schema/tx/spring-tx.xsd">
 
-	<!-- 数据源工厂 -->
-	<osgi:reference id="dataSourceFactoryBean" bean-name="dataSourceFactoryBean"
-		interface="com.yss.sofa.framework.datasource.DataSourceFactory" />
-
-	<!-- hibernate的相关配置代理 -->
-	<bean id="HibernateConfigBean"
-		class="com.yss.sofa.framework.dao.hibernate.HibernateConfigBean">
-		<constructor-arg value="acs-clearing" />
-	</bean>
-
-	<!-- 直连数据库导入指令数据源 -->
-	<bean id="fundReportDataSource"
-		class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
-		<property name="dataSource">
-			<bean class="com.yss.sofa.framework.datasource.SimpleDriverDataSource">
-				<property name="sessionFactoryId" value="fundReportDataSource" />
-				<property name="dataSourceFactory" ref="dataSourceFactoryBean" />
-			</bean>
-		</property>
-
-		<property name="mappingLocations">
-			<list>
-				<value>classpath:/com/yss/acs/parameter/**/vo/*.hbm.xml</value>
-			</list>
-		</property>
-		
-		<property name="hibernateProperties" ref="HibernateConfigBean"></property>
-	</bean>
-	<bean id="fundDataSource"
-		class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
-		<property name="dataSource">
-			<bean class="com.yss.sofa.framework.datasource.SimpleDriverDataSource">
-				<property name="sessionFactoryId" value="fundDataSource" />
-				<property name="dataSourceFactory" ref="dataSourceFactoryBean" />
-			</bean>
-		</property>
-		<property name="hibernateProperties" ref="HibernateConfigBean"></property>
-	</bean>
-	<bean id="fundOtherDataSource"
-		class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
-		<property name="dataSource">
-			<bean class="com.yss.sofa.framework.datasource.SimpleDriverDataSource">
-				<property name="sessionFactoryId" value="fundOtherDataSource" />
-				<property name="dataSourceFactory" ref="dataSourceFactoryBean" />
-			</bean>
-		</property>
-		<property name="hibernateProperties" ref="HibernateConfigBean"></property>
-	</bean>
-	<!-- AOP使用 -->
-	<aop:aspectj-autoproxy proxy-target-class="true" />
-	<bean id="SOFAInterceptor" class="com.yss.sofa.framework.interceptor.SOFAInterceptor" />
-
-	<bean class="com.yss.sofa.framework.web.util.ApplicationContextTransmitter" />
-
-	<bean id="txManager"
-		class="com.yss.sofa.framework.datasource.TransactionManagerBean" />
-	<tx:annotation-driven transaction-manager="txManager" />
-
-	<!-- 强制使用CGLIB代理 -->
-	<aop:aspectj-autoproxy proxy-target-class="true" />
-	
-	<!-- 通用拦截器 -->
-	<bean class="com.yss.sofa.framework.interceptor.SOFAInterceptor" />
-
-	<!-- 异常解析器 -->
-	<bean class="com.yss.sofa.framework.exception.ExceptionResolver" />
-	
-</beans>
+ <!-- hibernate的相关配置代理 -->
+ <bean id="HibernateConfigBean"
+  class="com.yss.sofa.framework.dao.hibernate.HibernateConfigBean">
+  <constructor-arg value="acs-clearing" />
+ </bean>
+ <!-- 数据源工厂 -->
+ <osgi:reference id="dataSourceFactoryBean" bean-name="dataSourceFactoryBean"
+  interface="com.yss.sofa.framework.datasource.DataSourceFactory" />
+ 
+ <!-- 直连数据库导入指令数据源 -->
+ <bean id="fundReportDataSource"
+  class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
+  <property name="dataSource">
+   <bean class="com.yss.sofa.framework.datasource.SimpleDriverDataSource">
+    <property name="sessionFactoryId" value="fundReportDataSource" />
+    <property name="dataSourceFactory" ref="dataSourceFactoryBean" />
+   </bean>
+  </property>
+  <property name="hibernateProperties" ref="HibernateConfigBean"></property>
+  <property name="mappingLocations">
+   <list>
+    <value>classpath:/com/yss/acs/fundreport/**/vo/*.hbm.xml</value>
+   </list>
+  </property>
+ </bean>
+ <bean id="fundDataSource"
+  class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
+  <property name="dataSource">
+   <bean class="com.yss.sofa.framework.datasource.SimpleDriverDataSource">
+    <property name="sessionFactoryId" value="fundDataSource" />
+    <property name="dataSourceFactory" ref="dataSourceFactoryBean" />
+   </bean>
+  </property>
+  <property name="hibernateProperties" ref="HibernateConfigBean"></property>
+  <property name="mappingLocations">
+   <list>
+    <value>classpath:/com/yss/acs/fundreport/**/vo/*.hbm.xml</value>
+   </list>
+  </property>
+ </bean>
+ <bean id="fundOtherDataSource"
+  class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
+  <property name="dataSource">
+   <bean class="com.yss.sofa.framework.datasource.SimpleDriverDataSource">
+    <property name="sessionFactoryId" value="fundOtherDataSource" />
+    <property name="dataSourceFactory" ref="dataSourceFactoryBean" />
+   </bean>
+  </property>
+  <property name="hibernateProperties" ref="HibernateConfigBean"></property>
+  <property name="mappingLocations">
+   <list>
+    <value>classpath:/com/yss/acs/fundreport/**/vo/*.hbm.xml</value>
+   </list>
+  </property>
+ </bean>
+ 
+ </beans>

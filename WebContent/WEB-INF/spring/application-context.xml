@@ -32,14 +32,9 @@
 
 	<bean id="reportDataBO" class="com.yss.acs.fundreport.biz.ReportDataBO" />
 
-	<bean id="taskNodesManageBO" class="com.yss.acs.fundreport.biz.TaskNodesManageBO">
-		<constructor-arg type="java.lang.Class"
-			value="com.yss.acs.fundreport.vo.TaskNodesManage" />
-	</bean>
-
 	<bean id="productModeManageBO" class="com.yss.acs.fundreport.biz.ProductModeManageBO">
-		<!-- <constructor-arg type="java.lang.Class" -->
-		<!-- value="com.yss.acs.fundreport.vo.ProductModeManage" /> -->
+		<constructor-arg type="java.lang.Class" 
+		 value="com.yss.acs.fundreport.vo.ProductModeManage" />
 	</bean>
 
 	<bean id="reportDataMsgBO" class="com.yss.acs.fundreport.biz.ReportDataMsgBO" />
